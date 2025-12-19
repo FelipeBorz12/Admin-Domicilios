@@ -8,6 +8,8 @@ const { authRouter, requireAdmin } = require('./auth');
 const landingAdminRouter = require('./landingAdmin');
 const menuAdminRoutes = require('./menuAdmin');
 const pvAdminRoutes = require('./pvAdmin');
+const teamAdminRoutes = require('./teamAdmin');
+
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -27,6 +29,9 @@ app.use("/api/admin", requireAdmin, menuAdminRoutes);
 app.use('/api/admin', requireAdmin, landingAdminRouter);
 
 app.use('/api/admin', requireAdmin, pvAdminRoutes);
+
+app.use('/api/admin', requireAdmin, teamAdminRoutes);
+
 
 // ========= PÁGINAS PROTEGIDAS =========
 app.get('/admin', requireAdmin, (req, res) => {
@@ -61,6 +66,14 @@ app.get('/admin/locations', requireAdmin, (req, res) => {
 
 app.get('/admin/locations.js', requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'protected', 'locations.js'));
+});
+
+app.get('/admin/team', requireAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'protected', 'team.html'));
+});
+
+app.get('/admin/team.js', requireAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'protected', 'team.js'));
 });
 
 

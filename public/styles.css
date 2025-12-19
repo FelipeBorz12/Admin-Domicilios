@@ -1,534 +1,534 @@
-:root{
-  --min-main: max(884px, 100dvh);
-}
-
-.min-h-main{
-  min-height: var(--min-main);
-}
-
-/* =========================
-   Glass panel
-   ========================= */
-.glass-panel{
-  background: rgba(255, 255, 255, 0.70);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.dark .glass-panel{
-  background: rgba(35, 34, 15, 0.60);
-}
-
-/* =========================
-   Modal overlay
-   ========================= */
-.modal-overlay{
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-
-.modal-overlay.hidden{
-  display: none;
-}
-
-.modal-backdrop{
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,.55);
-}
-
-.modal-wrap{
-  position: relative;
-  width: 100%;
-  max-width: 460px;
-  animation: modalIn .14s ease-out;
-}
-
-.modal-card{
-  position: relative;
-}
-
-@keyframes modalIn{
-  from{ transform: translateY(8px) scale(.98); opacity: 0; }
-  to{ transform: translateY(0) scale(1); opacity: 1; }
-}
-
-/* =========================
-   Spinner (para “Cargando…”)
-   ========================= */
-.spinner{
-  width: 18px;
-  height: 18px;
-  border-radius: 9999px;
-  border: 2px solid rgba(35, 34, 15, .25);
-  border-top-color: rgba(35, 34, 15, .85);
-  animation: spin .7s linear infinite;
-  display: inline-block;
-  vertical-align: middle;
-}
-
-.dark .spinner{
-  border: 2px solid rgba(249, 245, 6, .25);
-  border-top-color: rgba(249, 245, 6, .85);
-}
-
-@keyframes spin{
-  to{ transform: rotate(360deg); }
-}
-
-/* =========================
-   ADMIN DASHBOARD (general)
-   ========================= */
-
-/* Scrollbar casi invisible */
-::-webkit-scrollbar { width: 0px; background: transparent; }
-
-/* Avatar pequeño (si le pones background-image inline en el HTML, esto lo respeta) */
-.avatar-sm{
-  width: 38px;
-  height: 38px;
-  border-radius: 9999px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-
-  /* fallback por si no hay imagen */
-  background-image:
-    radial-gradient(10px 10px at 30% 30%, rgba(255,255,255,.8), transparent 60%),
-    linear-gradient(135deg, rgba(19,127,236,.95), rgba(16,25,34,.95));
-}
-
-/* Botones del topbar (más compactos) */
-.btn-icon{
-  width: 34px;
-  height: 34px;
-  border-radius: 9999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(148,163,184,.18);
-  color: rgba(15,23,42,.9);
-  transition: background-color .15s ease, color .15s ease, transform .05s ease;
-}
-.dark .btn-icon{
-  background: rgba(148,163,184,.12);
-  color: rgba(226,232,240,.95);
-}
-.btn-icon:active{ transform: translateY(1px); }
-
-/* =========================
-   DASH CARDS: compactas + imagen adaptativa
-   ========================= */
-.dash-card{
-  position: relative;
-  overflow: hidden;
-  border-radius: 14px;
-  background: white;
-  border: 1px solid rgba(226,232,240,1);
-  box-shadow: 0 1px 2px rgba(0,0,0,.05);
-
-  /* ya NO cuadradas */
-  aspect-ratio: auto;
-  height: clamp(170px, 24vw, 210px);
-
-  /* layout: imagen arriba, texto abajo */
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 10px;
-
-  padding: 12px;
-  text-align: left;
-  transition: transform .12s ease, opacity .12s ease;
-}
-.dark .dash-card{
-  background: rgba(30,41,59,1);
-  border-color: rgba(51,65,85,1);
-}
-.dash-card:active{ opacity: .92; transform: scale(.99); }
-
-/* Imagen dentro del botón: se adapta al tamaño del botón */
-.dash-card-media{
-  position: relative;
-  width: 100%;
-  height: clamp(78px, 12vw, 110px);
-  border-radius: 12px;
-
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-
-  border: 1px solid rgba(255,255,255,.18);
-  box-shadow: 0 10px 22px rgba(0,0,0,.12);
-  overflow: hidden;
-}
-
-/* Contenido */
-.dash-card-body{ position: relative; z-index: 1; }
-
-.dash-card-icon{
-  width: 30px;
-  height: 30px;
-  border-radius: 9999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(15,23,42,.08);
-  color: rgba(15,23,42,.92);
-  margin-bottom: 6px;
-}
-.dark .dash-card-icon{
-  background: rgba(255,255,255,.10);
-  color: rgba(255,255,255,.92);
-}
-
-.dash-card-title{
-  font-weight: 800;
-  font-size: 14px;
-  line-height: 1.15;
-  color: rgba(15,23,42,.95);
-}
-.dark .dash-card-title{ color: rgba(255,255,255,.95); }
-
-.dash-card-sub{
-  margin-top: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(100,116,139,.95);
-}
-.dark .dash-card-sub{ color: rgba(148,163,184,.95); }
-
-/* =========================
-   Bottom nav (compacta)
-   ========================= */
-.nav-btn{
-  width: 56px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  color: rgba(148,163,184,1);
-  transition: color .12s ease, transform .05s ease;
-}
-.dark .nav-btn{ color: rgba(100,116,139,1); }
-.nav-btn:hover{ color: rgba(71,85,105,1); }
-.dark .nav-btn:hover{ color: rgba(203,213,225,1); }
-.nav-btn:active{ transform: translateY(1px); }
-
-.nav-btn--active{
-  color: rgba(19,127,236,1);
-}
-.dark .nav-btn--active{
-  color: rgba(19,127,236,1);
-}
-
-/* Ajuste de iconos de la nav aunque el HTML tenga text-[26px] */
-.nav-btn .material-symbols-outlined{
-  font-size: 22px !important;
-  line-height: 1 !important;
-}
-
-/* =========================
-   Loading overlay (pantalla de carga)
-   ========================= */
-.loading-overlay{
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-.loading-overlay.hidden{ display: none; }
-
-.loading-backdrop{
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,.45);
-}
-
-.loading-card{
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: rgba(255,255,255,.85);
-  border: 1px solid rgba(226,232,240,1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 30px 60px rgba(0,0,0,.25);
-  color: rgba(15,23,42,.92);
-}
-.dark .loading-card{
-  background: rgba(15,23,42,.75);
-  border-color: rgba(51,65,85,1);
-  color: rgba(226,232,240,.95);
-}
-
-.loading-text{
-  font-weight: 800;
-  letter-spacing: .2px;
-}
-
-/* =========================
-   DASH CARD IMAGES (public/img)
-   - La imagen se adapta al contenedor por .dash-card-media
-   ========================= */
-.media-appearance{
-  background-image:
-    linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.30) 100%),
-    url("/img/appearance.jpg");
-}
-
-.media-inventory{
-  background-image:
-    linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.30) 100%),
-    url("/img/inventory.jpg");
-}
-
-.media-locations{
-  background-image:
-    linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.30) 100%),
-    url("/img/locations.jpg");
-}
-
-.media-team{
-  background-image:
-    linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.30) 100%),
-    url("/img/team.jpg");
-}
-
-/* =========================
-   HERO (landing + preview) estilo como la imagen
-   ========================= */
-
-.hero-stage{
-  position: relative;
-  width: 100%;
-  padding: 14px 0;
-}
-
-.hero-shell{
-  position: relative;
-  width: 100%;
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 0 16px;
-}
-
-.hero-frame{
-  position: relative;
-  border-radius: 22px;
-  overflow: hidden;
-  box-shadow: 0 25px 70px rgba(0,0,0,.45);
-  background: rgba(2,6,23,.7);
-  border: 1px solid rgba(255,255,255,.06);
-}
-
-.hero-grid{
-  display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  min-height: 420px;
-}
-
-@media (max-width: 900px){
-  .hero-grid{ grid-template-columns: 1fr; min-height: 520px; }
-}
-
-.hero-media{
-  position: relative;
-  background: rgba(2,6,23,.65);
-}
-
-.hero-media img{
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.hero-panel{
-  position: relative;
-  padding: 44px 44px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  background:
-    radial-gradient(900px 600px at 85% 55%, rgba(217,43,43,.55), transparent 55%),
-    radial-gradient(900px 600px at 25% 30%, rgba(37,99,235,.35), transparent 55%),
-    linear-gradient(135deg, rgba(2,6,23,.92), rgba(2,6,23,.82));
-}
-
-@media (max-width: 900px){
-  .hero-panel{ padding: 26px 22px; }
-}
-
-.hero-tag{
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .18em;
-  color: #f5c84b;
-  text-transform: uppercase;
-}
-
-.hero-title{
-  margin-top: 10px;
-  font-size: 34px;
-  line-height: 1.05;
-  font-weight: 900;
-  color: white;
-  letter-spacing: -0.02em;
-}
-
-@media (max-width: 900px){
-  .hero-title{ font-size: 26px; }
-}
-
-.hero-desc{
-  margin-top: 10px;
-  font-size: 14px;
-  line-height: 1.45;
-  color: rgba(255,255,255,.80);
-  max-width: 520px;
-}
-
-.hero-cta{
-  margin-top: 18px;
-  width: 100%;
-  max-width: 560px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: 9999px;
-  background: var(--primary, #D92B2B);
-  color: white;
-  font-weight: 800;
-  font-size: 13px;
-  box-shadow: 0 18px 40px rgba(217,43,43,.25);
-  transition: transform .08s ease, filter .12s ease;
-}
-
-.hero-cta:active{ transform: translateY(1px); }
-.hero-cta:hover{ filter: brightness(1.05); }
-
-.hero-arrows{
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 10px;
-  pointer-events: none;
-}
-
-.hero-arrow-btn{
-  pointer-events: auto;
-  width: 44px;
-  height: 44px;
-  border-radius: 9999px;
-  display: grid;
-  place-items: center;
-  background: rgba(2,6,23,.58);
-  border: 1px solid rgba(255,255,255,.10);
-  color: white;
-  box-shadow: 0 12px 28px rgba(0,0,0,.35);
-  transition: transform .08s ease, background-color .12s ease;
-}
-
-.hero-arrow-btn:hover{ background: rgba(2,6,23,.70); }
-.hero-arrow-btn:active{ transform: translateY(1px); }
-
-.hero-dots{
-  position: absolute;
-  left: 50%;
-  bottom: 12px;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 9999px;
-  background: rgba(2,6,23,.45);
-  border: 1px solid rgba(255,255,255,.10);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.hero-dot{
-  width: 8px;
-  height: 8px;
-  border-radius: 9999px;
-  background: rgba(255,255,255,.35);
-  transition: transform .12s ease, background-color .12s ease;
-}
-
-.hero-dot--active{
-  background: rgba(255,255,255,.95);
-  transform: scale(1.15);
-}
-
-/* =========================
-   FIX DEFINITIVO: Botones del modal SIEMPRE visibles
-   (no depende de Tailwind ni de clases)
-   ========================= */
-
-#uiModalActions button{
-  border-radius: 9999px !important;
-  padding: 10px 18px !important;
-  font-size: 14px !important;
-  font-weight: 900 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 8px !important;
-  border: 1px solid rgba(226,232,240,1) !important;
-  background: rgba(241,245,249,1) !important;
-  color: rgba(15,23,42,.95) !important;
-  transition: .15s ease !important;
-  user-select: none !important;
-  white-space: nowrap !important;
-}
-
-#uiModalActions button:hover{ opacity: .92 !important; }
-#uiModalActions button:active{ transform: translateY(1px) !important; }
-
-.dark #uiModalActions button{
-  border-color: rgba(51,65,85,1) !important;
-  background: rgba(30,41,59,1) !important;
-  color: rgba(226,232,240,.95) !important;
-}
-
-/* Variantes por data-variant */
-#uiModalActions button[data-variant="primary"]{
-  background: #137fec !important;
-  border-color: rgba(19,127,236,.45) !important;
-  color: #fff !important;
-  box-shadow: 0 14px 30px rgba(19,127,236,.25) !important;
-}
-#uiModalActions button[data-variant="primary"]:hover{ filter: brightness(1.06) !important; }
-
-#uiModalActions button[data-variant="danger"]{
-  background: #e11d48 !important;
-  border-color: rgba(225,29,72,.55) !important;
-  color: #fff !important;
-  box-shadow: 0 14px 30px rgba(225,29,72,.20) !important;
-}
-#uiModalActions button[data-variant="danger"]:hover{ filter: brightness(0.96) !important; }
-
-/* Default explícito */
-#uiModalActions button[data-variant="default"]{
-  background: rgba(241,245,249,1) !important;
-  color: rgba(15,23,42,.95) !important;
-}
-
-.dark #uiModalActions button[data-variant="default"]{
-  background: rgba(30,41,59,1) !important;
-  color: rgba(226,232,240,.95) !important;
-}
+  :root{
+    --min-main: max(884px, 100dvh);
+  }
+
+  .min-h-main{
+    min-height: var(--min-main);
+  }
+
+  /* =========================
+    Glass panel
+    ========================= */
+  .glass-panel{
+    background: rgba(255, 255, 255, 0.70);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .dark .glass-panel{
+    background: rgba(35, 34, 15, 0.60);
+  }
+
+  /* =========================
+    Modal overlay
+    ========================= */
+  .modal-overlay{
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+
+  .modal-overlay.hidden{
+    display: none;
+  }
+
+  .modal-backdrop{
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+  }
+
+  .modal-wrap{
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    animation: modalIn .14s ease-out;
+  }
+
+  .modal-card{
+    position: relative;
+  }
+
+  @keyframes modalIn{
+    from{ transform: translateY(8px) scale(.98); opacity: 0; }
+    to{ transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  /* =========================
+    Spinner (para “Cargando…”)
+    ========================= */
+  .spinner{
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    border: 2px solid rgba(35, 34, 15, .25);
+    border-top-color: rgba(35, 34, 15, .85);
+    animation: spin .7s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .dark .spinner{
+    border: 2px solid rgba(249, 245, 6, .25);
+    border-top-color: rgba(249, 245, 6, .85);
+  }
+
+  @keyframes spin{
+    to{ transform: rotate(360deg); }
+  }
+
+  /* =========================
+    ADMIN DASHBOARD (general)
+    ========================= */
+
+  /* Scrollbar casi invisible */
+  ::-webkit-scrollbar { width: 0px; background: transparent; }
+
+  /* Avatar pequeño (si le pones background-image inline en el HTML, esto lo respeta) */
+  .avatar-sm{
+    width: 38px;
+    height: 38px;
+    border-radius: 9999px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+
+    /* fallback por si no hay imagen */
+    background-image:
+      radial-gradient(10px 10px at 30% 30%, rgba(255,255,255,.8), transparent 60%),
+      linear-gradient(135deg, rgba(19,127,236,.95), rgba(16,25,34,.95));
+  }
+
+  /* Botones del topbar (más compactos) */
+  .btn-icon{
+    width: 34px;
+    height: 34px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(148,163,184,.18);
+    color: rgba(15,23,42,.9);
+    transition: background-color .15s ease, color .15s ease, transform .05s ease;
+  }
+  .dark .btn-icon{
+    background: rgba(148,163,184,.12);
+    color: rgba(226,232,240,.95);
+  }
+  .btn-icon:active{ transform: translateY(1px); }
+
+  /* =========================
+    DASH CARDS: compactas + imagen adaptativa
+    ========================= */
+  .dash-card{
+    position: relative;
+    overflow: hidden;
+    border-radius: 14px;
+    background: white;
+    border: 1px solid rgba(226,232,240,1);
+    box-shadow: 0 1px 2px rgba(0,0,0,.05);
+
+    /* ya NO cuadradas */
+    aspect-ratio: auto;
+    height: clamp(170px, 24vw, 210px);
+
+    /* layout: imagen arriba, texto abajo */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 10px;
+
+    padding: 12px;
+    text-align: left;
+    transition: transform .12s ease, opacity .12s ease;
+  }
+  .dark .dash-card{
+    background: rgba(30,41,59,1);
+    border-color: rgba(51,65,85,1);
+  }
+  .dash-card:active{ opacity: .92; transform: scale(.99); }
+
+  /* Imagen dentro del botón: se adapta al tamaño del botón */
+  .dash-card-media{
+    position: relative;
+    width: 100%;
+    height: clamp(78px, 12vw, 110px);
+    border-radius: 12px;
+
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+
+    border: 1px solid rgba(255,255,255,.18);
+    box-shadow: 0 10px 22px rgba(0,0,0,.12);
+    overflow: hidden;
+  }
+
+  /* Contenido */
+  .dash-card-body{ position: relative; z-index: 1; }
+
+  .dash-card-icon{
+    width: 30px;
+    height: 30px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15,23,42,.08);
+    color: rgba(15,23,42,.92);
+    margin-bottom: 6px;
+  }
+  .dark .dash-card-icon{
+    background: rgba(255,255,255,.10);
+    color: rgba(255,255,255,.92);
+  }
+
+  .dash-card-title{
+    font-weight: 800;
+    font-size: 14px;
+    line-height: 1.15;
+    color: rgba(15,23,42,.95);
+  }
+  .dark .dash-card-title{ color: rgba(255,255,255,.95); }
+
+  .dash-card-sub{
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(100,116,139,.95);
+  }
+  .dark .dash-card-sub{ color: rgba(148,163,184,.95); }
+
+  /* =========================
+    Bottom nav (compacta)
+    ========================= */
+  .nav-btn{
+    width: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    color: rgba(148,163,184,1);
+    transition: color .12s ease, transform .05s ease;
+  }
+  .dark .nav-btn{ color: rgba(100,116,139,1); }
+  .nav-btn:hover{ color: rgba(71,85,105,1); }
+  .dark .nav-btn:hover{ color: rgba(203,213,225,1); }
+  .nav-btn:active{ transform: translateY(1px); }
+
+  .nav-btn--active{
+    color: rgba(19,127,236,1);
+  }
+  .dark .nav-btn--active{
+    color: rgba(19,127,236,1);
+  }
+
+  /* Ajuste de iconos de la nav aunque el HTML tenga text-[26px] */
+  .nav-btn .material-symbols-outlined{
+    font-size: 22px !important;
+    line-height: 1 !important;
+  }
+
+  /* =========================
+    Loading overlay (pantalla de carga)
+    ========================= */
+  .loading-overlay{
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+  .loading-overlay.hidden{ display: none; }
+
+  .loading-backdrop{
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+  }
+
+  .loading-card{
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.85);
+    border: 1px solid rgba(226,232,240,1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 30px 60px rgba(0,0,0,.25);
+    color: rgba(15,23,42,.92);
+  }
+  .dark .loading-card{
+    background: rgba(15,23,42,.75);
+    border-color: rgba(51,65,85,1);
+    color: rgba(226,232,240,.95);
+  }
+
+  .loading-text{
+    font-weight: 800;
+    letter-spacing: .2px;
+  }
+
+  /* =========================
+    DASH CARD IMAGES (public/img)
+    - La imagen se adapta al contenedor por .dash-card-media
+    ========================= */
+  .media-appearance{
+    background-image:
+      linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.30) 100%),
+      url("/img/appearance.jpg");
+  }
+
+  .media-inventory{
+    background-image:
+      linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.30) 100%),
+      url("/img/inventory.jpg");
+  }
+
+  .media-locations{
+    background-image:
+      linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.30) 100%),
+      url("/img/locations.jpg");
+  }
+
+  .media-team{
+    background-image:
+      linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.30) 100%),
+      url("/img/team.jpg");
+  }
+
+  /* =========================
+    HERO (landing + preview) estilo como la imagen
+    ========================= */
+
+  .hero-stage{
+    position: relative;
+    width: 100%;
+    padding: 14px 0;
+  }
+
+  .hero-shell{
+    position: relative;
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  .hero-frame{
+    position: relative;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 25px 70px rgba(0,0,0,.45);
+    background: rgba(2,6,23,.7);
+    border: 1px solid rgba(255,255,255,.06);
+  }
+
+  .hero-grid{
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    min-height: 420px;
+  }
+
+  @media (max-width: 900px){
+    .hero-grid{ grid-template-columns: 1fr; min-height: 520px; }
+  }
+
+  .hero-media{
+    position: relative;
+    background: rgba(2,6,23,.65);
+  }
+
+  .hero-media img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .hero-panel{
+    position: relative;
+    padding: 44px 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background:
+      radial-gradient(900px 600px at 85% 55%, rgba(217,43,43,.55), transparent 55%),
+      radial-gradient(900px 600px at 25% 30%, rgba(37,99,235,.35), transparent 55%),
+      linear-gradient(135deg, rgba(2,6,23,.92), rgba(2,6,23,.82));
+  }
+
+  @media (max-width: 900px){
+    .hero-panel{ padding: 26px 22px; }
+  }
+
+  .hero-tag{
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .18em;
+    color: #f5c84b;
+    text-transform: uppercase;
+  }
+
+  .hero-title{
+    margin-top: 10px;
+    font-size: 34px;
+    line-height: 1.05;
+    font-weight: 900;
+    color: white;
+    letter-spacing: -0.02em;
+  }
+
+  @media (max-width: 900px){
+    .hero-title{ font-size: 26px; }
+  }
+
+  .hero-desc{
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.45;
+    color: rgba(255,255,255,.80);
+    max-width: 520px;
+  }
+
+  .hero-cta{
+    margin-top: 18px;
+    width: 100%;
+    max-width: 560px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 9999px;
+    background: var(--primary, #D92B2B);
+    color: white;
+    font-weight: 800;
+    font-size: 13px;
+    box-shadow: 0 18px 40px rgba(217,43,43,.25);
+    transition: transform .08s ease, filter .12s ease;
+  }
+
+  .hero-cta:active{ transform: translateY(1px); }
+  .hero-cta:hover{ filter: brightness(1.05); }
+
+  .hero-arrows{
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    pointer-events: none;
+  }
+
+  .hero-arrow-btn{
+    pointer-events: auto;
+    width: 44px;
+    height: 44px;
+    border-radius: 9999px;
+    display: grid;
+    place-items: center;
+    background: rgba(2,6,23,.58);
+    border: 1px solid rgba(255,255,255,.10);
+    color: white;
+    box-shadow: 0 12px 28px rgba(0,0,0,.35);
+    transition: transform .08s ease, background-color .12s ease;
+  }
+
+  .hero-arrow-btn:hover{ background: rgba(2,6,23,.70); }
+  .hero-arrow-btn:active{ transform: translateY(1px); }
+
+  .hero-dots{
+    position: absolute;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 9999px;
+    background: rgba(2,6,23,.45);
+    border: 1px solid rgba(255,255,255,.10);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .hero-dot{
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background: rgba(255,255,255,.35);
+    transition: transform .12s ease, background-color .12s ease;
+  }
+
+  .hero-dot--active{
+    background: rgba(255,255,255,.95);
+    transform: scale(1.15);
+  }
+
+  /* =========================
+    FIX DEFINITIVO: Botones del modal SIEMPRE visibles
+    (no depende de Tailwind ni de clases)
+    ========================= */
+
+  #uiModalActions button{
+    border-radius: 9999px !important;
+    padding: 10px 18px !important;
+    font-size: 14px !important;
+    font-weight: 900 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    border: 1px solid rgba(226,232,240,1) !important;
+    background: rgba(241,245,249,1) !important;
+    color: rgba(15,23,42,.95) !important;
+    transition: .15s ease !important;
+    user-select: none !important;
+    white-space: nowrap !important;
+  }
+
+  #uiModalActions button:hover{ opacity: .92 !important; }
+  #uiModalActions button:active{ transform: translateY(1px) !important; }
+
+  .dark #uiModalActions button{
+    border-color: rgba(51,65,85,1) !important;
+    background: rgba(30,41,59,1) !important;
+    color: rgba(226,232,240,.95) !important;
+  }
+
+  /* Variantes por data-variant */
+  #uiModalActions button[data-variant="primary"]{
+    background: #137fec !important;
+    border-color: rgba(19,127,236,.45) !important;
+    color: #fff !important;
+    box-shadow: 0 14px 30px rgba(19,127,236,.25) !important;
+  }
+  #uiModalActions button[data-variant="primary"]:hover{ filter: brightness(1.06) !important; }
+
+  #uiModalActions button[data-variant="danger"]{
+    background: #e11d48 !important;
+    border-color: rgba(225,29,72,.55) !important;
+    color: #fff !important;
+    box-shadow: 0 14px 30px rgba(225,29,72,.20) !important;
+  }
+  #uiModalActions button[data-variant="danger"]:hover{ filter: brightness(0.96) !important; }
+
+  /* Default explícito */
+  #uiModalActions button[data-variant="default"]{
+    background: rgba(241,245,249,1) !important;
+    color: rgba(15,23,42,.95) !important;
+  }
+
+  .dark #uiModalActions button[data-variant="default"]{
+    background: rgba(30,41,59,1) !important;
+    color: rgba(226,232,240,.95) !important;
+  }

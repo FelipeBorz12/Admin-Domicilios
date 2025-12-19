@@ -208,6 +208,16 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
+    // ✅ Equipos -> abre CRUD usuarios cocina
+  if (action === "team") {
+    showLoading("Abriendo equipos…");
+    setTimeout(() => {
+      window.location.href = "/admin/team";
+    }, 250);
+    return;
+  }
+
+
   showLoading("Abriendo…");
   try {
     await new Promise((r) => setTimeout(r, 450));
