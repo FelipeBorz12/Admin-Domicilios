@@ -1,0 +1,274 @@
+<!doctype html>
+<html class="light" lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Admin Dashboard</title>
+
+  <!-- Material Symbols -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+  <!-- Fuente -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <!-- CSS general -->
+  <link rel="stylesheet" href="/styles.css" />
+
+  <!-- Tailwind config (antes del CDN) -->
+  <script src="/tw-config.js"></script>
+
+  <!-- Tailwind CDN + plugins -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+</head>
+
+<body>
+  <div class="relative flex h-auto min-h-screen w-full flex-col bg-background-light dark:bg-background-dark overflow-x-hidden font-display pb-28">
+
+    <!-- Top App Bar -->
+    <header class="sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800 bg-background-light/90 dark:bg-background-dark/85 backdrop-blur-md">
+      <div class="px-4 pt-4 pb-3 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <!-- Avatar pequeño desde /public/img -->
+          <div
+            class="avatar-sm ring-2 ring-primary/20 shadow-sm"
+            style="background-image: url('/img/admin-avatar.png');"
+            aria-hidden="true"
+          ></div>
+
+          <div class="flex flex-col min-w-0">
+            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">System Admin</span>
+            <h2 class="truncate text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">
+              Dashboard
+            </h2>
+          </div>
+        </div>
+
+        <nav class="flex items-center gap-2">
+          <button id="btnRefresh"
+            class="btn-icon hover:bg-slate-100 dark:hover:bg-slate-800"
+            type="button"
+            aria-label="Actualizar">
+            <span class="material-symbols-outlined text-[22px]">refresh</span>
+          </button>
+
+          <button id="btnLogout"
+            class="btn-icon hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+            type="button"
+            aria-label="Cerrar sesión">
+            <span class="material-symbols-outlined text-[22px]">logout</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Sub-barra -->
+      <div class="px-4 pb-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/70 dark:bg-black/20 border border-black/5 dark:border-white/10 text-xs text-slate-600 dark:text-slate-300">
+            <span class="material-symbols-outlined text-[18px]">shield</span>
+            Sesión activa
+          </span>
+
+          <span class="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/70 dark:bg-black/20 border border-black/5 dark:border-white/10 text-xs text-slate-600 dark:text-slate-300">
+            <span class="material-symbols-outlined text-[18px]">schedule</span>
+            <span id="nowText">—</span>
+          </span>
+        </div>
+
+        <button id="btnTheme"
+          class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/70 dark:bg-black/20 border border-black/5 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-white/10 transition"
+          type="button">
+          <span class="material-symbols-outlined text-[18px]" id="themeIcon">dark_mode</span>
+          <span id="themeText">Modo</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Greeting -->
+    <section class="px-4 pt-6 pb-2">
+      <h3 class="text-slate-900 dark:text-white tracking-tight text-2xl font-bold leading-tight">
+        Bienvenido, <span id="adminName">Admin</span>
+      </h3>
+      <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+        Aquí tienes un resumen rápido y accesos directos.
+      </p>
+    </section>
+
+    <!-- Stats -->
+    <section class="flex flex-wrap gap-4 p-4">
+      <div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm active:scale-[0.99] transition">
+        <div class="flex justify-between items-start">
+          <div class="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-primary">
+            <span class="material-symbols-outlined">group</span>
+          </div>
+          <span class="flex items-center text-emerald-600 dark:text-emerald-400 text-xs font-bold bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-full">
+            Online
+          </span>
+        </div>
+        <div class="mt-2">
+          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium leading-normal">Usuarios activos</p>
+          <p id="statActiveUsers" class="text-slate-900 dark:text-white tracking-tight text-2xl font-bold leading-tight mt-1">—</p>
+        </div>
+      </div>
+
+      <div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm active:scale-[0.99] transition">
+        <div class="flex justify-between items-start">
+          <div class="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg text-orange-600 dark:text-orange-400">
+            <span class="material-symbols-outlined">inventory_2</span>
+          </div>
+          <span class="flex items-center text-orange-600 dark:text-orange-400 text-xs font-bold bg-orange-50 dark:bg-orange-900/30 px-2 py-1 rounded-full">
+            Acción
+          </span>
+        </div>
+        <div class="mt-2">
+          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium leading-normal">Alertas</p>
+          <p id="statAlerts" class="text-slate-900 dark:text-white tracking-tight text-2xl font-bold leading-tight mt-1">—</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Management title -->
+    <section class="flex items-center justify-between px-4 pt-2 pb-2">
+      <h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Management</h2>
+      <button id="btnViewAll" class="text-primary text-sm font-semibold hover:opacity-80 transition" type="button">Ver todo</button>
+    </section>
+
+    <!-- Grid actions -->
+    <section class="grid grid-cols-2 gap-3 p-4">
+      <button class="dash-card" type="button" data-action="appearance">
+        <div class="dash-card-media media-appearance" aria-hidden="true"></div>
+        <div class="dash-card-body">
+          <div class="dash-card-icon"><span class="material-symbols-outlined text-[18px]">palette</span></div>
+          <p class="dash-card-title">Apariencia</p>
+          <p class="dash-card-sub">Estilos del sistema</p>
+        </div>
+      </button>
+
+      <button class="dash-card" type="button" data-action="inventory">
+        <div class="dash-card-media media-inventory" aria-hidden="true"></div>
+        <div class="dash-card-body">
+          <div class="dash-card-icon"><span class="material-symbols-outlined text-[18px]">category</span></div>
+          <p class="dash-card-title">Inventario</p>
+          <p class="dash-card-sub">Gestionar productos</p>
+        </div>
+      </button>
+
+      <button class="dash-card" type="button" data-action="locations">
+        <div class="dash-card-media media-locations" aria-hidden="true"></div>
+        <div class="dash-card-body">
+          <div class="dash-card-icon"><span class="material-symbols-outlined text-[18px]">add_location_alt</span></div>
+          <p class="dash-card-title">Ubicaciones</p>
+          <p class="dash-card-sub">Crear nuevos puntos</p>
+        </div>
+      </button>
+
+      <button class="dash-card" type="button" data-action="team">
+        <div class="dash-card-media media-team" aria-hidden="true"></div>
+        <div class="dash-card-body">
+          <div class="dash-card-icon"><span class="material-symbols-outlined text-[18px]">person_add</span></div>
+          <p class="dash-card-title">Equipo</p>
+          <p class="dash-card-sub">Crear usuario</p>
+        </div>
+      </button>
+    </section>
+
+    <!-- Bottom status -->
+    <section class="px-4 pb-4">
+      <div class="flex items-center justify-between gap-4 p-4 rounded-xl bg-primary text-white shadow-lg shadow-primary/30">
+        <div>
+          <h4 class="font-bold text-lg">Estado del sistema</h4>
+          <p class="text-white/85 text-sm">Todo operativo</p>
+        </div>
+        <div class="bg-white/20 p-2 rounded-full">
+          <span class="material-symbols-outlined">check_circle</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom Nav -->
+    <footer class="fixed bottom-0 left-0 w-full bg-white dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 px-6 py-2 pb-6 z-40">
+      <div class="flex justify-between items-center">
+        <button class="nav-btn nav-btn--active" type="button" data-nav="home">
+          <span class="material-symbols-outlined text-[26px]">dashboard</span>
+          <span class="text-[10px] font-bold">Home</span>
+        </button>
+
+        <button class="nav-btn" type="button" data-nav="alerts">
+          <span class="material-symbols-outlined text-[26px]">notifications</span>
+          <span class="text-[10px] font-medium">Alerts</span>
+        </button>
+
+        <button class="nav-btn" type="button" data-nav="settings">
+          <span class="material-symbols-outlined text-[26px]">settings</span>
+          <span class="text-[10px] font-medium">Settings</span>
+        </button>
+      </div>
+    </footer>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden" aria-hidden="true">
+      <div class="loading-backdrop"></div>
+      <div class="loading-card">
+        <span class="spinner"></span>
+        <div class="loading-text">Procesando…</div>
+      </div>
+    </div>
+
+    <!-- Modal logout -->
+    <div id="modalOverlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-modal-close></div>
+
+      <div class="modal-wrap" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalDesc">
+        <div class="modal-card rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl p-5">
+          <div class="flex items-start gap-3">
+            <div class="mt-0.5 h-10 w-10 rounded-lg bg-red-50 dark:bg-red-900/25 border border-red-100 dark:border-red-900/40 grid place-items-center">
+              <span class="material-symbols-outlined text-[22px] text-red-600 dark:text-red-400">logout</span>
+            </div>
+
+            <div class="flex-1">
+              <h3 id="modalTitle" class="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                Cerrar sesión
+              </h3>
+              <p id="modalDesc" class="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                ¿Seguro que deseas cerrar la sesión del administrador?
+              </p>
+            </div>
+
+            <button
+              id="modalCloseBtn"
+              type="button"
+              class="ml-2 -mr-1 -mt-1 p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition focus:outline-none"
+              aria-label="Cerrar"
+              data-modal-close
+            >
+              <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+
+          <div class="mt-5 flex gap-3 justify-end">
+            <button
+              type="button"
+              class="rounded-full px-5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:opacity-90 transition"
+              data-modal-close
+            >
+              Cancelar
+            </button>
+
+            <button
+              id="confirmLogoutBtn"
+              type="button"
+              class="rounded-full px-5 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition"
+            >
+              Sí, cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

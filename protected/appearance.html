@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Apariencia • Admin</title>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="/styles.css" />
+
+    <script src="/tw-config.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+    <style>
+      .tab-pill {
+        padding: 6px 12px;
+        border-radius: 9999px;
+        font-size: 12px;
+        font-weight: 800;
+        border: 1px solid rgba(226, 232, 240, 1);
+        background: rgba(255, 255, 255, 1);
+        color: rgba(15, 23, 42, 0.9);
+      }
+      .dark .tab-pill {
+        border-color: rgba(51, 65, 85, 1);
+        background: rgba(30, 41, 59, 1);
+        color: rgba(226, 232, 240, 0.95);
+      }
+      .tab-pill--active {
+        border-color: rgba(19, 127, 236, 0.35);
+        box-shadow: 0 10px 20px rgba(19, 127, 236, 0.12);
+        color: rgba(19, 127, 236, 1);
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field-label {
+        font-size: 12px;
+        font-weight: 800;
+        color: rgba(51, 65, 85, 1);
+      }
+      .dark .field-label {
+        color: rgba(203, 213, 225, 1);
+      }
+      .field-hint {
+        font-size: 11px;
+        color: rgba(100, 116, 139, 1);
+      }
+      .dark .field-hint {
+        color: rgba(148, 163, 184, 1);
+      }
+      .field-input,
+      .field-textarea {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 1);
+        background: rgba(248, 250, 252, 1);
+        padding: 10px 12px;
+        font-size: 13px;
+        color: rgba(15, 23, 42, 0.95);
+        outline: none;
+      }
+      .dark .field-input,
+      .dark .field-textarea {
+        border-color: rgba(51, 65, 85, 1);
+        background: rgba(15, 23, 42, 0.35);
+        color: rgba(226, 232, 240, 0.95);
+      }
+      .field-input:focus,
+      .field-textarea:focus {
+        border-color: rgba(19, 127, 236, 0.55);
+        box-shadow: 0 0 0 4px rgba(19, 127, 236, 0.15);
+      }
+      .btn-mini {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 9999px;
+        font-size: 12px;
+        font-weight: 800;
+        border: 1px solid rgba(226, 232, 240, 1);
+        background: white;
+        color: rgba(15, 23, 42, 0.9);
+        transition: 0.15s ease;
+      }
+      .dark .btn-mini {
+        border-color: rgba(51, 65, 85, 1);
+        background: rgba(30, 41, 59, 1);
+        color: rgba(226, 232, 240, 0.95);
+      }
+      .btn-mini:hover {
+        opacity: 0.92;
+      }
+    </style>
+  </head>
+
+  <body class="bg-background-light dark:bg-background-dark font-display">
+    <header
+      class="sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800 bg-background-light/90 dark:bg-background-dark/85 backdrop-blur-md"
+    >
+      <div class="px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <a
+            href="/admin"
+            class="btn-icon hover:bg-slate-100 dark:hover:bg-slate-800"
+            aria-label="Volver"
+          >
+            <span class="material-symbols-outlined text-[22px]"
+              >arrow_back</span
+            >
+          </a>
+
+          <div class="min-w-0">
+            <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Editor
+            </div>
+            <h1
+              class="text-slate-900 dark:text-white text-lg font-bold leading-tight truncate"
+            >
+              Apariencia (Landing)
+            </h1>
+          </div>
+
+          <span
+            id="draftBadge"
+            class="hidden ml-2 text-[11px] font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+          >
+            BORRADOR
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            id="btnLoad"
+            class="rounded-full px-4 py-2 text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:opacity-90 transition"
+            type="button"
+          >
+            Cargar actual
+          </button>
+
+          <button
+            id="btnSaveDraft"
+            class="rounded-full px-4 py-2 text-sm font-bold bg-slate-900 text-white hover:opacity-90 transition"
+            type="button"
+          >
+            Guardar borrador
+          </button>
+
+          <button
+            id="btnPublish"
+            class="rounded-full px-4 py-2 text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition"
+          >
+            Publicar
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-5">
+      <div class="grid gap-4 lg:grid-cols-[420px_1fr]">
+        <!-- Left: Editor -->
+        <aside
+          class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
+        >
+          <div
+            class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
+          >
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[20px] text-primary"
+                >tune</span
+              >
+              <h2 class="font-bold text-slate-900 dark:text-white">
+                Configuración
+              </h2>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                id="tabHero"
+                class="tab-pill tab-pill--active"
+                type="button"
+              >
+                Hero
+              </button>
+              <button id="tabAbout" class="tab-pill" type="button">
+                About
+              </button>
+              <button id="tabInstagram" class="tab-pill" type="button">
+                Instagram
+              </button>
+            </div>
+          </div>
+
+          <!-- HERO panel -->
+          <section id="panelHero" class="p-4 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-slate-900 dark:text-white">
+                  Hero Carousel
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                  Tag + título + descripción + imagen.
+                </p>
+              </div>
+              <button
+                id="btnAddHero"
+                class="rounded-full px-4 py-2 text-sm font-bold bg-primary text-white hover:brightness-110 transition"
+                type="button"
+              >
+                + Agregar
+              </button>
+            </div>
+
+            <div id="heroList" class="space-y-3"></div>
+
+            <div class="text-xs text-slate-500 dark:text-slate-400">
+              El botón del hero es fijo: <b>Ver menú</b> → <b>/stores</b>.
+            </div>
+          </section>
+
+          <!-- ABOUT panel -->
+          <section id="panelAbout" class="hidden p-4 space-y-4">
+            <div class="grid gap-3">
+              <label class="field">
+                <span class="field-label">Título</span>
+                <input
+                  id="about_title"
+                  class="field-input"
+                  type="text"
+                  placeholder="¿Quiénes Somos?"
+                />
+              </label>
+
+              <label class="field">
+                <span class="field-label">Tagline</span>
+                <input
+                  id="about_tagline"
+                  class="field-input"
+                  type="text"
+                  placeholder="#MovimientoTQ"
+                />
+              </label>
+
+              <label class="field">
+                <span class="field-label">Badge</span>
+                <input
+                  id="about_badge_text"
+                  class="field-input"
+                  type="text"
+                  placeholder="+100 puntos de venta..."
+                />
+              </label>
+
+              <div class="grid gap-2">
+                <label class="field">
+                  <span class="field-label">Imagen (URL)</span>
+                  <input
+                    id="about_image_url"
+                    class="field-input"
+                    type="text"
+                    placeholder="(Se llena al subir imagen)"
+                  />
+                  <span class="field-hint">
+                    Sube una imagen (recomendado: <b>WEBP</b>) y el URL se llena
+                    solo.
+                  </span>
+                </label>
+
+                <div class="flex items-center gap-2">
+                  <button id="btnUploadAbout" class="btn-mini" type="button">
+                    <span class="material-symbols-outlined text-[18px]"
+                      >upload</span
+                    >
+                    Subir imagen
+                  </button>
+
+                  <button
+                    id="btnDeleteAboutImage"
+                    class="btn-mini"
+                    type="button"
+                  >
+                    <span class="material-symbols-outlined text-[18px]"
+                      >delete</span
+                    >
+                    Borrar del bucket
+                  </button>
+                </div>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Texto (Body)</span>
+                <textarea
+                  id="about_body"
+                  class="field-textarea"
+                  rows="7"
+                  placeholder="Separar párrafos con líneas en blanco"
+                ></textarea>
+              </label>
+
+              <div class="grid grid-cols-2 gap-3">
+                <label class="field">
+                  <span class="field-label">CTA Texto</span>
+                  <input
+                    id="about_cta_text"
+                    class="field-input"
+                    type="text"
+                    placeholder="Pide aquí"
+                  />
+                </label>
+
+                <label class="field">
+                  <span class="field-label">CTA Href</span>
+                  <input
+                    id="about_cta_href"
+                    class="field-input"
+                    type="text"
+                    placeholder="/stores"
+                  />
+                </label>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Instagram handle</span>
+                <input
+                  id="about_instagram_handle"
+                  class="field-input"
+                  type="text"
+                  placeholder="@tierraquerida20"
+                />
+              </label>
+            </div>
+          </section>
+
+          <!-- Instagram panel -->
+          <section id="panelInstagram" class="hidden p-4 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-slate-900 dark:text-white">
+                  Cards de Instagram
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                  Edita y previsualiza. Publica cuando estés listo.
+                </p>
+              </div>
+              <button
+                id="btnAddInsta"
+                class="rounded-full px-4 py-2 text-sm font-bold bg-primary text-white hover:brightness-110 transition"
+                type="button"
+              >
+                + Agregar
+              </button>
+            </div>
+
+            <div id="instaList" class="space-y-3"></div>
+          </section>
+        </aside>
+
+        <!-- Right: Preview -->
+        <section
+          class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
+        >
+          <div
+            class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
+          >
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[20px] text-primary"
+                >visibility</span
+              >
+              <h2 class="font-bold text-slate-900 dark:text-white">
+                Vista previa
+              </h2>
+            </div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">
+              No afecta la app hasta publicar
+            </div>
+          </div>
+
+          <div class="p-4 bg-background-light dark:bg-background-dark">
+            <div
+              class="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-background-light dark:bg-background-dark"
+            >
+              <div class="bg-yellow-400 p-2 text-center">
+                <div class="text-xs font-bold text-black">
+                  Preview • Envío gratis en pedidos superiores a $100.000 cop
+                </div>
+              </div>
+
+              <!-- HERO preview -->
+              <section class="hero-stage">
+                <div class="hero-shell">
+                  <div class="hero-frame">
+                    <div class="hero-grid">
+                      <div class="hero-media">
+                        <!-- ✅ sin empleados.png: usamos la imagen de error por defecto -->
+                        <img
+                          id="pv_hero_img"
+                          src="/img/mensaje-error.png"
+                          alt="Hero preview"
+                        />
+                      </div>
+
+                      <div class="hero-panel">
+                        <div class="hero-tag" id="pv_hero_tag">#PROMO</div>
+                        <div class="hero-title" id="pv_hero_title">—</div>
+                        <div class="hero-desc" id="pv_hero_desc">—</div>
+
+                        <a id="pv_hero_btn" class="hero-cta" href="/stores">
+                          <span>Ver menú</span>
+                          <span class="material-symbols-outlined text-[18px]"
+                            >arrow_forward</span
+                          >
+                        </a>
+                      </div>
+                    </div>
+
+                    <div class="hero-dots" id="pv_hero_dots"></div>
+
+                    <div class="hero-arrows">
+                      <button
+                        id="pv_hero_prev"
+                        class="hero-arrow-btn"
+                        type="button"
+                        aria-label="Anterior"
+                      >
+                        <span class="material-symbols-outlined"
+                          >chevron_left</span
+                        >
+                      </button>
+                      <button
+                        id="pv_hero_next"
+                        class="hero-arrow-btn"
+                        type="button"
+                        aria-label="Siguiente"
+                      >
+                        <span class="material-symbols-outlined"
+                          >chevron_right</span
+                        >
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ABOUT preview -->
+              <div class="p-5 border-t border-slate-200 dark:border-slate-800">
+                <div class="grid gap-6 lg:grid-cols-[1fr_1fr] items-start">
+                  <div class="relative">
+                    <div
+                      class="rounded-2xl overflow-hidden bg-black/10 dark:bg-white/5 border border-black/10 dark:border-white/10"
+                    >
+                      <!-- ✅ sin default: error.webp -->
+                      <img
+                        id="pv_about_img"
+                        src="/img/mensaje-error.png"
+                        alt="Preview about"
+                        class="w-full h-[220px] object-cover"
+                      />
+                    </div>
+                    <div
+                      id="pv_badge_wrap"
+                      class="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-xs font-semibold"
+                    >
+                      <span
+                        class="inline-block h-2 w-2 rounded-full bg-emerald-400"
+                      ></span>
+                      <span id="pv_badge_text">—</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div
+                      class="text-[11px] font-bold uppercase tracking-[0.22em] text-primary"
+                      id="pv_tagline"
+                    >
+                      —
+                    </div>
+                    <h3
+                      class="mt-2 text-2xl font-extrabold text-black dark:text-white"
+                      id="pv_title"
+                    >
+                      —
+                    </h3>
+
+                    <div
+                      class="mt-3 space-y-3 text-sm text-slate-700 dark:text-slate-300"
+                      id="pv_body"
+                    ></div>
+
+                    <div class="mt-5 flex items-center gap-3">
+                      <a
+                        id="pv_cta"
+                        href="#"
+                        class="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-primary text-white text-sm font-bold"
+                      >
+                        <span id="pv_cta_text">Pide aquí</span>
+                        <span class="material-symbols-outlined ml-1 text-[18px]"
+                          >arrow_forward</span
+                        >
+                      </a>
+
+                      <div class="text-sm text-slate-600 dark:text-slate-300">
+                        <span class="font-bold">IG:</span>
+                        <span id="pv_ig">@—</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Instagram preview -->
+              <div class="p-5 border-t border-slate-200 dark:border-slate-800">
+                <h3
+                  class="text-center text-xl font-extrabold tracking-tight text-black dark:text-white"
+                >
+                  Síguenos en Instagram
+                  <span class="text-primary" id="pv_ig2">@tierraquerida20</span>
+                </h3>
+
+                <div
+                  id="pv_insta_grid"
+                  class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden" aria-hidden="true">
+      <div class="loading-backdrop"></div>
+      <div class="loading-card">
+        <span class="spinner"></span>
+        <div class="loading-text">Procesando…</div>
+      </div>
+    </div>
+
+    <!-- ✅ Modal genérico (necesario para que NO salga “localhost dice”) -->
+    <div id="uiModal" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-ui-close></div>
+
+      <div class="modal-wrap" role="dialog" aria-modal="true">
+        <div
+          class="modal-card rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-5"
+        >
+          <div class="flex items-start gap-3">
+            <div
+              id="uiModalIconWrap"
+              class="mt-0.5 h-10 w-10 rounded-xl border grid place-items-center"
+            >
+              <span
+                id="uiModalIcon"
+                class="material-symbols-outlined text-[22px]"
+                >info</span
+              >
+            </div>
+
+            <div class="flex-1">
+              <h3
+                id="uiModalTitle"
+                class="text-base font-extrabold text-slate-900 dark:text-white tracking-tight"
+              >
+                —
+              </h3>
+              <p
+                id="uiModalDesc"
+                class="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed"
+              >
+                —
+              </p>
+            </div>
+
+            <button
+              class="ml-2 -mr-1 -mt-1 p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              aria-label="Cerrar"
+              type="button"
+              data-ui-close
+            >
+              <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+
+          <div id="uiModalActions" class="mt-5 flex gap-2 justify-end"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="appearance.js"></script>
+  </body>
+</html>

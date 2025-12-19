@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin Login</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&family=Noto+Sans:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Material Symbols -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/tw-config.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  </head>
+
+  <body
+    class="relative flex w-full flex-col bg-background-light dark:bg-background-dark font-display overflow-hidden selection:bg-primary selection:text-black"
+  >
+    <!-- Decorative blobs -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+      <div
+        class="absolute -top-[10%] -right-[10%] w-[80vw] h-[80vw] max-w-[520px] max-h-[520px] rounded-full bg-primary/20 blur-[90px] mix-blend-multiply dark:mix-blend-soft-light opacity-60"
+      ></div>
+      <div
+        class="absolute top-[42%] -left-[10%] w-[60vw] h-[60vw] max-w-[430px] max-h-[430px] rounded-full bg-primary/10 blur-[70px] mix-blend-multiply dark:mix-blend-soft-light opacity-50"
+      ></div>
+    </div>
+
+    <!-- Main -->
+    <main class="relative z-10 flex flex-1 items-center justify-center px-6">
+      <section class="w-full max-w-[420px] mx-auto">
+        <div
+          class="w-full flex flex-col items-center justify-center min-h-main py-10"
+        >
+          <!-- Header -->
+          <div class="w-full flex flex-col items-center mb-10 space-y-4">
+            <div
+              class="flex items-center justify-center w-20 h-20 rounded-2xl bg-white dark:bg-white/5 shadow-xl shadow-primary/5 ring-1 ring-black/5 dark:ring-white/10"
+            >
+              <span
+                class="material-symbols-outlined text-4xl text-background-dark dark:text-primary"
+                >admin_panel_settings</span
+              >
+            </div>
+
+            <div class="text-center">
+              <div class="flex items-center justify-center gap-2 mb-1">
+                <span
+                  class="h-px w-8 bg-background-dark/20 dark:bg-white/20"
+                ></span>
+                <h2
+                  class="text-xs font-bold uppercase tracking-[0.2em] text-background-dark/60 dark:text-white/60"
+                >
+                  Admin Portal
+                </h2>
+                <span
+                  class="h-px w-8 bg-background-dark/20 dark:bg-white/20"
+                ></span>
+              </div>
+              <h1
+                class="text-3xl font-bold text-background-dark dark:text-white tracking-tight"
+              >
+                System Access
+              </h1>
+            </div>
+          </div>
+
+          <!-- Form (panel tipo glass) -->
+          <div
+            class="w-full glass-panel rounded-2xl border border-black/5 dark:border-white/10 shadow-xl shadow-primary/5 p-5 sm:p-6"
+          >
+            <form id="loginForm" class="w-full space-y-6" autocomplete="off">
+              <!-- Email -->
+              <div class="space-y-2">
+                <label
+                  for="email"
+                  class="block text-sm font-medium text-background-dark/80 dark:text-white/80 ml-4"
+                >
+                  Email
+                </label>
+
+                <div class="relative group">
+                  <div
+                    class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none"
+                  >
+                    <span
+                      class="material-symbols-outlined text-background-dark/40 dark:text-white/40 group-focus-within:text-background-dark dark:group-focus-within:text-primary transition-colors"
+                    >
+                      badge
+                    </span>
+                  </div>
+
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="admin@company.com"
+                    class="form-input block w-full rounded-full border-0 py-4 pl-14 pr-5 text-background-dark dark:text-white bg-white dark:bg-white/5 ring-1 ring-black/5 dark:ring-white/10 placeholder:text-background-dark/30 dark:placeholder:text-white/30 focus:ring-2 focus:ring-primary focus:bg-white dark:focus:bg-white/10 transition-all shadow-sm"
+                  />
+                </div>
+              </div>
+
+              <!-- Password -->
+              <div class="space-y-2">
+                <label
+                  for="password"
+                  class="block text-sm font-medium text-background-dark/80 dark:text-white/80 ml-4"
+                >
+                  Contraseña
+                </label>
+
+                <div class="relative group">
+                  <div
+                    class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none"
+                  >
+                    <span
+                      class="material-symbols-outlined text-background-dark/40 dark:text-white/40 group-focus-within:text-background-dark dark:group-focus-within:text-primary transition-colors"
+                    >
+                      lock
+                    </span>
+                  </div>
+
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    class="form-input block w-full rounded-full border-0 py-4 pl-14 pr-14 text-background-dark dark:text-white bg-white dark:bg-white/5 ring-1 ring-black/5 dark:ring-white/10 placeholder:text-background-dark/30 dark:placeholder:text-white/30 focus:ring-2 focus:ring-primary focus:bg-white dark:focus:bg-white/10 transition-all shadow-sm"
+                  />
+
+                  <button
+                    id="togglePwd"
+                    class="absolute inset-y-0 right-0 pr-5 flex items-center cursor-pointer text-background-dark/40 dark:text-white/40 hover:text-background-dark dark:hover:text-white transition-colors focus:outline-none"
+                    type="button"
+                    aria-label="Mostrar u ocultar contraseña"
+                  >
+                    <span
+                      id="togglePwdIcon"
+                      class="material-symbols-outlined text-xl"
+                      >visibility</span
+                    >
+                  </button>
+                </div>
+              </div>
+
+              <!-- Button -->
+              <div class="pt-2">
+                <button
+                  id="btn"
+                  class="group relative flex w-full items-center justify-center rounded-full bg-primary py-4 px-4 text-base font-bold text-background-dark shadow-lg shadow-primary/25 hover:bg-primary/90 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm transition-all duration-200"
+                  type="submit"
+                >
+                  <span class="mr-2">Authenticate</span>
+                  <span
+                    class="material-symbols-outlined text-xl transition-transform group-hover:translate-x-1"
+                    >arrow_forward</span
+                  >
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Footer status -->
+          <div class="mt-10 flex flex-col items-center justify-center">
+            <div
+              class="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/60 dark:bg-black/20 backdrop-blur-sm border border-black/5 dark:border-white/5"
+            >
+              <span class="relative flex h-2.5 w-2.5">
+                <span
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"
+                ></span>
+                <span
+                  class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"
+                ></span>
+              </span>
+              <p
+                class="text-[11px] font-semibold text-background-dark/60 dark:text-white/50 tracking-wide uppercase"
+              >
+                Secure Server • Connected
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- MODAL (único, dinámico) -->
+    <div id="modalOverlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-modal-close></div>
+
+      <div
+        class="modal-wrap"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modalTitle"
+        aria-describedby="modalDesc"
+      >
+        <div
+          class="modal-card glass-panel rounded-2xl border border-black/5 dark:border-white/10 shadow-xl shadow-primary/10 p-5 sm:p-6"
+        >
+          <div class="flex items-start gap-3">
+            <div
+              id="modalIconWrap"
+              class="mt-0.5 h-10 w-10 rounded-2xl bg-white/80 dark:bg-black/20 border border-black/5 dark:border-white/10 grid place-items-center"
+            >
+              <span
+                id="modalIcon"
+                class="material-symbols-outlined text-xl text-background-dark dark:text-primary"
+                >info</span
+              >
+            </div>
+
+            <div class="flex-1">
+              <h3
+                id="modalTitle"
+                class="text-base font-bold text-background-dark dark:text-white tracking-tight"
+              >
+                Título
+              </h3>
+              <p
+                id="modalDesc"
+                class="mt-1 text-sm text-background-dark/70 dark:text-white/70 leading-relaxed"
+              >
+                Descripción
+              </p>
+            </div>
+
+            <button
+              id="modalCloseBtn"
+              type="button"
+              class="ml-2 -mr-1 -mt-1 p-2 rounded-xl text-background-dark/50 dark:text-white/50 hover:text-background-dark dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition focus:outline-none"
+              aria-label="Cerrar"
+              data-modal-close
+            >
+              <span class="material-symbols-outlined text-xl">close</span>
+            </button>
+          </div>
+
+          <div id="modalActions" class="mt-5 flex gap-3 justify-end">
+            <button
+              id="modalOkBtn"
+              type="button"
+              class="rounded-full bg-primary px-5 py-3 text-sm font-bold text-background-dark shadow-lg shadow-primary/25 hover:bg-primary/90 transition"
+              data-modal-close
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/login.js"></script>
+  </body>
+</html>
