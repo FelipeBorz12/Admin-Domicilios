@@ -66,7 +66,7 @@ const els = {
   instaList: q('instaList'),
   btnAddInsta: q('btnAddInsta'),
 
-  // Preview HERO
+  // Preview HERO (nuevo layout)
   pv_hero_img: q('pv_hero_img'),
   pv_hero_tag: q('pv_hero_tag'),
   pv_hero_title: q('pv_hero_title'),
@@ -75,18 +75,24 @@ const els = {
   pv_hero_next: q('pv_hero_next'),
   pv_hero_dots: q('pv_hero_dots'),
 
-  // Preview ABOUT/IG
-  pv_about_img: q('pv_about_img'),
-  pv_badge_wrap: q('pv_badge_wrap'),
-  pv_badge_text: q('pv_badge_text'),
-  pv_tagline: q('pv_tagline'),
-  pv_title: q('pv_title'),
-  pv_body: q('pv_body'),
-  pv_cta: q('pv_cta'),
-  pv_cta_text: q('pv_cta_text'),
-  pv_ig: q('pv_ig'),
-  pv_ig2: q('pv_ig2'),
-  pv_insta_grid: q('pv_insta_grid'),
+  // ✅ Side cards preview (desktop)
+  pv_side_a_bg: q('pv_side_a_bg'),
+  pv_side_b_bg: q('pv_side_b_bg'),
+  pv_side_a_title: q('pv_side_a_title'),
+  pv_side_b_title: q('pv_side_b_title'),
+
+  // Preview ABOUT (IDs del nuevo landing)
+  about_tagline_prev: q('about-tagline'),
+  about_title_prev: q('about-title'),
+  about_paragraphs_prev: q('about-paragraphs'),
+  about_badge_prev: q('about-badge-text'),
+  about_image_prev: q('about-image'),
+  about_cta_prev: q('about-cta-stores'),
+  about_cta_text_prev: q('about-cta-text'),
+  instagram_handle_prev: q('instagram-handle'),
+
+  // Preview IG (IDs del nuevo landing)
+  instagram_grid_prev: q('instagram-grid'),
 
   // Modal genérico
   uiModal: q('uiModal'),
@@ -145,28 +151,28 @@ function openModal({ icon = 'info', tone = 'info', title, desc, actions }) {
   els.uiModalActions.innerHTML = '';
 
   const wrap = els.uiModalIconWrap;
-  wrap.className = 'mt-0.5 h-10 w-10 rounded-xl border grid place-items-center';
+  wrap.className = 'mt-0.5 h-10 w-10 rounded-xl border grid place-items-center border-border-dark bg-background-dark';
 
   if (tone === 'danger') {
-    wrap.classList.add('bg-rose-50', 'border-rose-100', 'dark:bg-rose-900/25', 'dark:border-rose-900/40');
-    els.uiModalIcon.className = 'material-symbols-outlined text-[22px] text-rose-600 dark:text-rose-300';
+    wrap.classList.add('bg-rose-900/25', 'border-rose-900/40');
+    els.uiModalIcon.className = 'material-symbols-outlined text-[22px] text-rose-300';
   } else if (tone === 'success') {
-    wrap.classList.add('bg-emerald-50', 'border-emerald-100', 'dark:bg-emerald-900/25', 'dark:border-emerald-900/40');
-    els.uiModalIcon.className = 'material-symbols-outlined text-[22px] text-emerald-600 dark:text-emerald-300';
+    wrap.classList.add('bg-emerald-900/25', 'border-emerald-900/40');
+    els.uiModalIcon.className = 'material-symbols-outlined text-[22px] text-emerald-300';
   } else {
-    wrap.classList.add('bg-slate-100', 'border-slate-200', 'dark:bg-slate-800', 'dark:border-slate-700');
-    els.uiModalIcon.className = 'material-symbols-outlined text-[22px] text-slate-700 dark:text-slate-200';
+    wrap.classList.add('bg-surface-dark', 'border-border-dark');
+    els.uiModalIcon.className = 'material-symbols-outlined text-[22px] text-white/85';
   }
 
   (actions || []).forEach((a) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = a.label;
-    btn.className = 'rounded-full px-5 py-2.5 text-sm font-bold transition';
+    btn.className = 'rounded-full px-5 py-2.5 text-sm font-black transition';
 
     if (a.variant === 'danger') btn.classList.add('bg-rose-600', 'text-white', 'hover:bg-rose-700');
-    else if (a.variant === 'primary') btn.classList.add('bg-primary', 'text-white', 'hover:brightness-110');
-    else btn.classList.add('bg-slate-100', 'text-slate-800', 'hover:opacity-90', 'dark:bg-slate-800', 'dark:text-slate-100');
+    else if (a.variant === 'primary') btn.classList.add('bg-primary', 'text-white', 'hover:bg-red-700');
+    else btn.classList.add('bg-surface-dark', 'text-white/90', 'hover:bg-surface-dark-hover', 'border', 'border-border-dark');
 
     btn.addEventListener('click', async () => { if (a.onClick) await a.onClick(); });
     els.uiModalActions.appendChild(btn);
@@ -384,7 +390,6 @@ function normalizeTag(tag) {
   return t.startsWith('#') ? t : `#${t}`;
 }
 
-// ✅ NO filtramos por image_url: si falta, mostramos ERROR_IMG
 function getActiveHeroSlides() {
   return state.hero
     .filter(x => x.is_active !== false)
@@ -406,6 +411,15 @@ function renderHeroDots(total) {
   }
 }
 
+function paintSideCard(bgEl, titleEl, slide) {
+  if (!bgEl || !titleEl) return;
+  const url = imgOrError(slide?.image_url);
+  bgEl.style.backgroundImage = `url('${url}')`;
+  bgEl.style.backgroundSize = 'cover';
+  bgEl.style.backgroundPosition = 'center';
+  titleEl.textContent = slide?.title || '—';
+}
+
 function renderHeroSlide(slides) {
   if (!els.pv_hero_img || !els.pv_hero_tag || !els.pv_hero_title || !els.pv_hero_desc) return;
 
@@ -415,6 +429,10 @@ function renderHeroSlide(slides) {
     els.pv_hero_title.textContent = 'Sin slides activos';
     els.pv_hero_desc.textContent = 'Agrega al menos uno en la pestaña Hero.';
     if (els.pv_hero_dots) els.pv_hero_dots.innerHTML = '';
+
+    // side cards
+    paintSideCard(els.pv_side_a_bg, els.pv_side_a_title, null);
+    paintSideCard(els.pv_side_b_bg, els.pv_side_b_title, null);
     return;
   }
 
@@ -425,6 +443,12 @@ function renderHeroSlide(slides) {
   els.pv_hero_tag.textContent = normalizeTag(s.tag) || '#PROMO';
   els.pv_hero_title.textContent = s.title || '—';
   els.pv_hero_desc.textContent = s.description || '—';
+
+  // side cards = siguientes slides (loop)
+  const next1 = slides[(heroIndex + 1) % slides.length];
+  const next2 = slides[(heroIndex + 2) % slides.length];
+  paintSideCard(els.pv_side_a_bg, els.pv_side_a_title, next1);
+  paintSideCard(els.pv_side_b_bg, els.pv_side_b_title, next2);
 
   renderHeroDots(slides.length);
 }
@@ -437,21 +461,21 @@ function renderHeroEditor() {
 
   state.hero.forEach((it, idx) => {
     const wrap = document.createElement('div');
-    wrap.className = 'rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3';
+    wrap.className = 'rounded-2xl border border-border-dark bg-background-dark p-3';
 
     wrap.innerHTML = `
       <div class="flex items-start justify-between gap-3">
         <div class="flex items-center gap-2">
-          <div class="h-10 w-10 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-black/5 dark:bg-white/5">
+          <div class="h-10 w-10 rounded-xl overflow-hidden border border-border-dark bg-surface-dark">
             <div style="width:100%;height:100%;background-image:url('${escapeHtml(imgOrError(it.image_url))}');background-size:cover;background-position:center;"></div>
           </div>
           <div>
-            <div class="text-xs font-bold text-slate-900 dark:text-white">Slide #${idx + 1}</div>
-            <div class="text-[11px] text-slate-500 dark:text-slate-400">order_index: ${it.order_index ?? 0}</div>
+            <div class="text-xs font-black text-white">Slide #${idx + 1}</div>
+            <div class="text-[11px] text-white/55">order_index: ${it.order_index ?? 0}</div>
           </div>
         </div>
 
-        <button data-hero-remove="${idx}" class="rounded-full px-3 py-1.5 text-xs font-bold bg-rose-100 text-rose-700 hover:opacity-90 dark:bg-rose-900/30 dark:text-rose-200" type="button">
+        <button data-hero-remove="${idx}" class="rounded-full px-3 py-1.5 text-xs font-black bg-rose-900/30 text-rose-200 hover:opacity-90" type="button">
           Eliminar
         </button>
       </div>
@@ -477,7 +501,7 @@ function renderHeroEditor() {
             <span class="field-label">Imagen URL (obligatorio)</span>
             <input class="field-input" data-hero-k="image_url" data-hero-idx="${idx}" type="text" placeholder="(Se llena al subir imagen)" value="${escapeAttr(it.image_url || '')}">
             <span class="field-hint">
-              Sube desde tu PC y el URL se llenará solo. Recomendado: <b>WEBP</b>. Tamaño sugerido: <b>1080×1350</b>.
+              Recomendado: <b>WEBP</b>. Tamaño sugerido: <b>1080×1350</b>.
             </span>
           </label>
 
@@ -499,7 +523,7 @@ function renderHeroEditor() {
             <input class="field-input" data-hero-k="order_index" data-hero-idx="${idx}" type="number" value="${Number.isFinite(it.order_index) ? it.order_index : 0}">
           </label>
 
-          <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 mt-6">
+          <label class="inline-flex items-center gap-2 text-xs font-black text-white/85 mt-6">
             <input data-hero-k="is_active" data-hero-idx="${idx}" type="checkbox" ${it.is_active ? 'checked' : ''}>
             Activo
           </label>
@@ -639,7 +663,7 @@ bind(els.heroList, 'click', async (e) => {
     showLoading('Borrando imagen…');
     try {
       await apiPost(API.deleteImage, { publicUrl: item.image_url });
-      item.image_url = ''; // ✅ queda vacío y el preview mostrará ERROR_IMG
+      item.image_url = '';
       state.usingDraft = true;
       setDraftBadge(true);
       hideLoading();
@@ -751,21 +775,21 @@ function renderInstagramEditor() {
     .sort((x, y) => (x.order_index ?? 0) - (y.order_index ?? 0))
     .forEach((item, idx) => {
       const wrap = document.createElement('div');
-      wrap.className = 'rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3';
+      wrap.className = 'rounded-2xl border border-border-dark bg-background-dark p-3';
 
       wrap.innerHTML = `
         <div class="flex items-start justify-between gap-3">
           <div class="flex items-center gap-2">
-            <div class="h-10 w-10 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-black/5 dark:bg-white/5">
+            <div class="h-10 w-10 rounded-xl overflow-hidden border border-border-dark bg-surface-dark">
               <div style="width:100%;height:100%;background-image:url('${escapeHtml(imgOrError(item.image_url))}');background-size:cover;background-position:center;"></div>
             </div>
             <div>
-              <div class="text-xs font-bold text-slate-900 dark:text-white">Item #${idx + 1}</div>
-              <div class="text-[11px] text-slate-500 dark:text-slate-400">order_index: ${item.order_index ?? 0}</div>
+              <div class="text-xs font-black text-white">Item #${idx + 1}</div>
+              <div class="text-[11px] text-white/55">order_index: ${item.order_index ?? 0}</div>
             </div>
           </div>
 
-          <button data-insta-remove="${idx}" class="rounded-full px-3 py-1.5 text-xs font-bold bg-rose-100 text-rose-700 hover:opacity-90 dark:bg-rose-900/30 dark:text-rose-200" type="button">
+          <button data-insta-remove="${idx}" class="rounded-full px-3 py-1.5 text-xs font-black bg-rose-900/30 text-rose-200 hover:opacity-90" type="button">
             Eliminar
           </button>
         </div>
@@ -805,7 +829,7 @@ function renderInstagramEditor() {
             </label>
           </div>
 
-          <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
+          <label class="inline-flex items-center gap-2 text-xs font-black text-white/85">
             <input data-insta-k="is_active" data-insta-idx="${idx}" type="checkbox" ${item.is_active ? 'checked' : ''}>
             Activo
           </label>
@@ -953,88 +977,85 @@ bind(els.instaList, 'click', async (e) => {
   }
 }, 'instaList');
 
-// ---------------- Preview ----------------
+// ---------------- Preview (NUEVO LANDING) ----------------
 function renderPreview() {
   const heroSlides = getActiveHeroSlides();
   renderHeroSlide(heroSlides);
 
   const a = state.about;
 
-  if (els.pv_title) els.pv_title.textContent = a.title || '—';
-  if (els.pv_tagline) els.pv_tagline.textContent = a.tagline || '—';
+  // About -> IDs del nuevo landing
+  if (els.about_tagline_prev) els.about_tagline_prev.textContent = a.tagline || '—';
+  if (els.about_title_prev) els.about_title_prev.textContent = a.title || '—';
+  if (els.about_badge_prev) els.about_badge_prev.textContent = (a.badge_text || '').trim() || '—';
 
-  const badge = (a.badge_text || '').trim();
-  if (els.pv_badge_wrap && els.pv_badge_text) {
-    if (badge) {
-      els.pv_badge_wrap.style.display = 'inline-flex';
-      els.pv_badge_text.textContent = badge;
-    } else {
-      els.pv_badge_wrap.style.display = 'none';
-    }
-  }
+  if (els.about_image_prev) els.about_image_prev.src = imgOrError(a.image_url);
 
-  if (els.pv_about_img) els.pv_about_img.src = imgOrError(a.image_url);
-
-  if (els.pv_body) {
-    els.pv_body.innerHTML = '';
+  if (els.about_paragraphs_prev) {
+    els.about_paragraphs_prev.innerHTML = '';
     const parts = (a.body || '').split(/\n\s*\n/g).map(s => s.trim()).filter(Boolean);
+
     if (parts.length === 0) {
       const p = document.createElement('p');
       p.textContent = '—';
-      els.pv_body.appendChild(p);
+      els.about_paragraphs_prev.appendChild(p);
     } else {
       parts.forEach(t => {
         const p = document.createElement('p');
         p.textContent = t;
-        els.pv_body.appendChild(p);
+        els.about_paragraphs_prev.appendChild(p);
       });
     }
   }
 
-  if (els.pv_cta_text) els.pv_cta_text.textContent = a.cta_text || 'Pide aquí';
-  if (els.pv_cta) els.pv_cta.href = a.cta_href || '/stores';
+  if (els.about_cta_text_prev) els.about_cta_text_prev.textContent = a.cta_text || 'Pide aquí';
+  if (els.about_cta_prev) els.about_cta_prev.href = a.cta_href || '/stores';
 
-  if (els.pv_ig) els.pv_ig.textContent = a.instagram_handle || '@tierraquerida20';
-  if (els.pv_ig2) els.pv_ig2.textContent = a.instagram_handle || '@tierraquerida20';
+  if (els.instagram_handle_prev) els.instagram_handle_prev.textContent = a.instagram_handle || '@tierraquerida20';
 
-  if (!els.pv_insta_grid) return;
+  // Instagram grid (horizontal, snap)
+  if (!els.instagram_grid_prev) return;
 
-  els.pv_insta_grid.innerHTML = '';
-  const instaItems = state.instagram
+  els.instagram_grid_prev.innerHTML = '';
+  const items = state.instagram
     .filter(x => x.is_active !== false)
     .sort((x, y) => (x.order_index ?? 0) - (y.order_index ?? 0))
-    .slice(0, 8);
+    .slice(0, 12);
 
-  if (instaItems.length === 0) {
+  if (items.length === 0) {
     const div = document.createElement('div');
-    div.className = 'text-sm text-slate-600 dark:text-slate-300';
+    div.className = 'text-sm text-white/60';
     div.textContent = 'No hay items activos.';
-    els.pv_insta_grid.appendChild(div);
-  } else {
-    instaItems.forEach((it) => {
-      const card = document.createElement('a');
-      card.href = it.href || '#';
-      card.target = it.href ? '_blank' : '_self';
-      card.className = 'group block rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:opacity-95 transition';
-
-      card.innerHTML = `
-        <div style="height:140px;background-image:url('${escapeHtml(imgOrError(it.image_url))}');background-size:cover;background-position:center;"></div>
-        <div class="p-3">
-          <div class="text-xs font-bold text-slate-900 dark:text-white line-clamp-2">${escapeHtml(it.caption || 'Ver en Instagram')}</div>
-          <div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">${escapeHtml(it.href || '')}</div>
-        </div>
-      `;
-      els.pv_insta_grid.appendChild(card);
-    });
+    els.instagram_grid_prev.appendChild(div);
+    return;
   }
+
+  items.forEach((it) => {
+    const a = document.createElement('a');
+    a.href = it.href || '#';
+    a.target = it.href ? '_blank' : '_self';
+    a.rel = it.href ? 'noopener noreferrer' : '';
+    a.className =
+      'snap-start shrink-0 w-[220px] sm:w-[260px] rounded-2xl overflow-hidden border border-border-dark bg-surface-dark hover:bg-surface-dark-hover transition';
+
+    a.innerHTML = `
+      <div style="height:170px;background-image:url('${escapeHtml(imgOrError(it.image_url))}');background-size:cover;background-position:center;"></div>
+      <div class="p-3">
+        <div class="text-sm font-extrabold text-white leading-tight line-clamp-2">${escapeHtml(it.caption || 'Ver en Instagram')}</div>
+        <div class="mt-1 text-[11px] text-white/55 line-clamp-1">${escapeHtml(it.href || '')}</div>
+      </div>
+    `;
+
+    els.instagram_grid_prev.appendChild(a);
+  });
 }
 
 // ✅ fallback si la URL está rota/404
 if (els.pv_hero_img) {
   els.pv_hero_img.addEventListener('error', () => { els.pv_hero_img.src = ERROR_IMG; });
 }
-if (els.pv_about_img) {
-  els.pv_about_img.addEventListener('error', () => { els.pv_about_img.src = ERROR_IMG; });
+if (els.about_image_prev) {
+  els.about_image_prev.addEventListener('error', () => { els.about_image_prev.src = ERROR_IMG; });
 }
 
 // Flechas hero preview (sin autoplay)
