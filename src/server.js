@@ -9,6 +9,10 @@ const landingAdminRouter = require('./landingAdmin');
 const menuAdminRoutes = require('./menuAdmin');
 const pvAdminRoutes = require('./pvAdmin');
 const teamAdminRoutes = require('./teamAdmin');
+const pvAdmin = require("./pvAdmin");
+const shiftsAdmin = require("./shiftsAdmin");
+
+
 
 
 const app = express();
@@ -31,6 +35,9 @@ app.use('/api/admin', requireAdmin, landingAdminRouter);
 app.use('/api/admin', requireAdmin, pvAdminRoutes);
 
 app.use('/api/admin', requireAdmin, teamAdminRoutes);
+
+app.use("/api/admin", requireAdmin, pvAdmin);
+app.use("/api/admin", requireAdmin, shiftsAdmin);
 
 
 // ========= PÁGINAS PROTEGIDAS =========

@@ -14,6 +14,25 @@ const API = {
     return `/api/admin/pv/${id}/sales?` + qs.toString();
   },
 
+  // ✅ ventas por timestamps (para turno)
+  salesTS: (id, from_ts, to_ts) => {
+    const qs = new URLSearchParams();
+    if (from_ts) qs.set("from_ts", from_ts);
+    if (to_ts) qs.set("to_ts", to_ts);
+    return `/api/admin/pv/${id}/sales-ts?` + qs.toString();
+  },
+
+  // ✅ dashboard global
+  salesSummary: (from, to) => {
+    const qs = new URLSearchParams();
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    return `/api/admin/pv/sales/summary?` + qs.toString();
+  },
+
+  // ✅ turnos activos
+  activeShifts: "/api/admin/shifts/active",
+
   uploadImage: "/api/admin/upload-image",
   deleteImage: "/api/admin/delete-image",
 };
@@ -72,7 +91,6 @@ function hideLoading() {
   document.body.style.overflow = "";
 }
 
-// ---------- Modal ----------
 const els = {
   uiModal: q("uiModal"),
   uiModalIconWrap: q("uiModalIconWrap"),
@@ -83,6 +101,9 @@ const els = {
   uiModalActions: q("uiModalActions"),
 
   depChips: q("depChips"),
+  depScrollWrap: q("depScrollWrap"),
+  depScrollLeft: q("depScrollLeft"),
+  depScrollRight: q("depScrollRight"),
   depHint: q("depHint"),
   countText: q("countText"),
 
@@ -103,6 +124,16 @@ const els = {
 
   btnSaveSelected: q("btnSaveSelected"),
   btnDeleteSelected: q("btnDeleteSelected"),
+
+  // ✅ global dashboard
+  dashToday: q("dashToday"),
+  dashTodaySub: q("dashTodaySub"),
+  dash7d: q("dash7d"),
+  dash7dSub: q("dash7dSub"),
+  dash30d: q("dash30d"),
+  dash30dSub: q("dash30dSub"),
+  dashShifts: q("dashShifts"),
+  dashShiftsSub: q("dashShiftsSub"),
 };
 
 function hasModalUI() {
@@ -387,11 +418,12 @@ function modalForm({
       } else if (f.type === "checkbox") {
         input = document.createElement("input");
         input.type = "checkbox";
+        input.className = "h-5 w-5";
         input.checked = !!f.value;
       } else {
         input = document.createElement("input");
-        input.className = "field-input";
         input.type = f.type || "text";
+        input.className = "field-input";
         input.value = String(f.value ?? "");
         if (f.placeholder) input.placeholder = f.placeholder;
       }
@@ -400,662 +432,962 @@ function modalForm({
       lab.appendChild(input);
 
       if (f.hint) {
-        const hint = document.createElement("span");
-        hint.className = "field-hint";
-        hint.innerHTML = String(f.hint);
-        lab.appendChild(hint);
+        const h = document.createElement("div");
+        h.className = "field-hint";
+        h.textContent = f.hint;
+        lab.appendChild(h);
       }
 
       mount.appendChild(lab);
     });
-
-    const first = mount.querySelector("input,textarea,select");
-    if (first) setTimeout(() => first.focus(), 0);
   });
 }
 
-// ---------- STATE ----------
-const state = (window.__PV_STATE__ = window.__PV_STATE__ || {
-  items: [],
-  meta: { departamentos: [], municipiosByDepartamento: {} },
+// ---------- helpers time ----------
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+function dateToYYYYMMDD(d) {
+  const x = new Date(d);
+  return `${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`;
+}
+function daysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d;
+}
+function fmtMoney(n) {
+  const x = Number(n || 0);
+  return x.toLocaleString("es-CO", {
+    maximumFractionDigits: 0,
+  });
+}
+function fmtNum(n) {
+  const x = Number(n || 0);
+  return x.toLocaleString("es-CO", {
+    maximumFractionDigits: 0,
+  });
+}
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString("es-CO", { hour12: true });
+}
 
-  selectedDep: "all",
+// ---------- State ----------
+const state = {
+  meta: { deps: [], munisByDep: {} },
+  items: [],
+
   selectedPV: null,
+  selectedDep: "all",
 
   draftById: new Map(),
   dirtyIds: new Set(),
-});
 
+  // ✅ shifts (store_id = PV id)
+  activeShifts: [],
+  activeShiftByPvId: new Map(), // String(pv.id) -> shift
+};
+
+function saveFilters() {
+  const payload = {
+    q: els.qSearch?.value || "",
+    dep: els.qDep?.value || "all",
+    muni: els.qMuni?.value || "all",
+    selectedDep: state.selectedDep || "all",
+  };
+  try {
+    localStorage.setItem(FILTERS_KEY, JSON.stringify(payload));
+  } catch {}
+}
+function loadFilters() {
+  try {
+    const raw = localStorage.getItem(FILTERS_KEY);
+    if (!raw) return;
+    const x = JSON.parse(raw);
+    if (els.qSearch && typeof x.q === "string") els.qSearch.value = x.q;
+    if (els.qDep && typeof x.dep === "string") els.qDep.value = x.dep;
+    if (els.qMuni && typeof x.muni === "string") els.qMuni.value = x.muni;
+    if (typeof x.selectedDep === "string") state.selectedDep = x.selectedDep;
+  } catch {}
+}
 function setDirtyBadge() {
-  els.dirtyBadge?.classList?.toggle?.("hidden", !(state.dirtyIds.size > 0));
+  const b = els.dirtyBadge;
+  if (!b) return;
+  if (state.dirtyIds.size > 0) b.classList.remove("hidden");
+  else b.classList.add("hidden");
 }
 
-function normalizePV(r) {
-  return {
-    id: Number(r.id),
-    Departamento: String(r.Departamento ?? "").trim(),
-    Municipio: String(r.Municipio ?? "").trim(),
-    Direccion: String(r.Direccion ?? "").trim(),
-    Barrio: String(r.Barrio ?? "...").trim(),
-    Latitud: Number(r.Latitud ?? 0),
-    Longitud: Number(r.Longitud ?? 0),
-    num_whatsapp: r.num_whatsapp == null ? "" : String(r.num_whatsapp),
-    URL_image: r.URL_image == null ? "" : String(r.URL_image),
-  };
+function normalizePV(pv) {
+  const out = { ...pv };
+  out.id = Number(out.id);
+  out.Departamento = String(out.Departamento ?? "").trim();
+  out.Municipio = String(out.Municipio ?? "").trim();
+  out.Direccion = String(out.Direccion ?? "").trim();
+  out.Barrio = String(out.Barrio ?? "").trim();
+  out.URL_image = out.URL_image ? String(out.URL_image) : null;
+  out.Latitud = Number(out.Latitud);
+  out.Longitud = Number(out.Longitud);
+  out.num_whatsapp = out.num_whatsapp ? String(out.num_whatsapp) : null;
+  return out;
+}
+
+function getFilteredItems() {
+  const qTxt = String(els.qSearch?.value || "")
+    .trim()
+    .toLowerCase();
+
+  // Fuente de verdad: state.selectedDep (chips) si no es all,
+  // si está en all, usamos dropdown
+  const depFromState = String(state.selectedDep || "all");
+  const dep = depFromState !== "all" ? depFromState : els.qDep?.value || "all";
+  const muni = els.qMuni?.value || "all";
+
+  return state.items.filter((it) => {
+    if (dep !== "all" && it.Departamento !== dep) return false;
+    if (muni !== "all" && it.Municipio !== muni) return false;
+
+    if (!qTxt) return true;
+    return `${it.id} ${it.Barrio} ${it.Direccion} ${it.Departamento} ${it.Municipio}`
+      .toLowerCase()
+      .includes(qTxt);
+  });
 }
 
 function getEffectivePV(id) {
-  const key = Number(id);
-  if (state.draftById.has(key)) return state.draftById.get(key);
-  return state.items.find((x) => Number(x.id) === key) || null;
+  const base = state.items.find((x) => Number(x.id) === Number(id));
+  if (!base) return null;
+  const draft = state.draftById.get(Number(id));
+  return draft ? { ...base, ...draft } : base;
 }
 
-function setDraft(id, nextObj) {
+function setDraft(id, patch) {
   const key = Number(id);
-  state.draftById.set(key, nextObj);
+  const prev = state.draftById.get(key) || {};
+  state.draftById.set(key, { ...prev, ...patch });
   state.dirtyIds.add(key);
   setDirtyBadge();
-  renderChips();
-  renderList();
 }
-
 function clearDraft(id) {
   const key = Number(id);
   state.draftById.delete(key);
   state.dirtyIds.delete(key);
   setDirtyBadge();
-  renderChips();
-  renderList();
 }
 
-// ---------- FILTERS ----------
-function getFilters() {
-  const search = String(els.qSearch?.value || "").trim().toLowerCase();
-  const dep = String(els.qDep?.value || "all");
-  const muni = String(els.qMuni?.value || "all");
-  return { search, dep, muni };
+// ---------- Data Load ----------
+async function loadMeta() {
+  const data = await apiJSON(API.meta);
+
+  // ✅ tu backend devuelve {departamentos, municipiosByDepartamento}
+  const deps = Array.isArray(data.departamentos) ? data.departamentos : [];
+  const munisByDep =
+    data.municipiosByDepartamento &&
+    typeof data.municipiosByDepartamento === "object"
+      ? data.municipiosByDepartamento
+      : {};
+
+  state.meta = { deps, munisByDep };
+}
+async function loadAll() {
+  const data = await apiJSON(API.list);
+
+  // ✅ tu backend devuelve {items: [...]}
+  state.items = Array.isArray(data.items) ? data.items.map(normalizePV) : [];
 }
 
-function filtered() {
-  const { search, dep, muni } = getFilters();
-  return state.items
-    .filter((x) => {
-      if (dep !== "all" && x.Departamento !== dep) return false;
-      if (muni !== "all" && x.Municipio !== muni) return false;
-      if (state.selectedDep !== "all" && x.Departamento !== state.selectedDep)
-        return false;
+// ✅ load active shifts (store_id = pv.id)
+async function loadActiveShifts() {
+  try {
+    const data = await apiJSON(API.activeShifts);
+    const shifts = Array.isArray(data.items) ? data.items : [];
+    state.activeShifts = shifts;
 
-      if (search) {
-        const hay =
-          `${x.id} ${x.Departamento} ${x.Municipio} ${x.Barrio} ${x.Direccion}`.toLowerCase();
-        if (!hay.includes(search)) return false;
-      }
-      return true;
-    })
-    .slice()
-    .sort((a, b) => {
-      const k1 = `${a.Departamento} ${a.Municipio} ${a.Barrio}`.toLowerCase();
-      const k2 = `${b.Departamento} ${b.Municipio} ${b.Barrio}`.toLowerCase();
-      return k1.localeCompare(k2, "es");
-    });
-}
-
-function countsByDep() {
-  const map = {};
-  for (const x of state.items) {
-    const k = x.Departamento || "—";
-    map[k] = (map[k] || 0) + 1;
+    state.activeShiftByPvId = new Map();
+    for (const s of shifts) {
+      const pvId = String(s.store_id ?? "").trim();
+      if (!pvId) continue;
+      state.activeShiftByPvId.set(pvId, s);
+    }
+  } catch (e) {
+    console.warn("[shifts] no se pudo cargar active shifts:", e?.message || e);
+    state.activeShifts = [];
+    state.activeShiftByPvId = new Map();
   }
-  return map;
 }
 
-// ---------- Persistencia filtros ----------
-function saveFilters() {
+// ✅ global sales dashboard
+async function loadGlobalDashboard() {
+  const set = (el, val) => {
+    if (!el) return;
+    el.textContent = val;
+  };
+
+  set(els.dashToday, "—");
+  set(els.dash7d, "—");
+  set(els.dash30d, "—");
+  set(els.dashShifts, "—");
+
+  set(els.dashTodaySub, "—");
+  set(els.dash7dSub, "—");
+  set(els.dash30dSub, "—");
+  set(els.dashShiftsSub, "—");
+
+  const today = dateToYYYYMMDD(new Date());
+  const from7 = dateToYYYYMMDD(daysAgo(6));
+  const from30 = dateToYYYYMMDD(daysAgo(29));
+
   try {
-    const payload = {
-      qSearch: String(els.qSearch?.value || ""),
-      qDep: String(els.qDep?.value || "all"),
-      qMuni: String(els.qMuni?.value || "all"),
-      selectedDep: String(state.selectedDep || "all"),
-    };
-    localStorage.setItem(FILTERS_KEY, JSON.stringify(payload));
-  } catch {}
+    const [sToday, s7d, s30d] = await Promise.all([
+      apiJSON(API.salesSummary(today, today)),
+      apiJSON(API.salesSummary(from7, today)),
+      apiJSON(API.salesSummary(from30, today)),
+    ]);
+
+    set(els.dashToday, `$ ${fmtMoney(sToday.totals?.revenue ?? 0)}`);
+    set(els.dashTodaySub, `${fmtNum(sToday.totals?.qty ?? 0)} ítems`);
+
+    set(els.dash7d, `$ ${fmtMoney(s7d.totals?.revenue ?? 0)}`);
+    set(els.dash7dSub, `${fmtNum(s7d.totals?.qty ?? 0)} ítems`);
+
+    set(els.dash30d, `$ ${fmtMoney(s30d.totals?.revenue ?? 0)}`);
+    set(els.dash30dSub, `${fmtNum(s30d.totals?.qty ?? 0)} ítems`);
+  } catch (e) {
+    console.warn("[global sales] error:", e?.message || e);
+    set(els.dashToday, "—");
+    set(els.dash7d, "—");
+    set(els.dash30d, "—");
+  }
+
+  const active = state.activeShifts?.length || 0;
+  set(els.dashShifts, fmtNum(active));
+  if (els.dashShiftsSub) {
+    els.dashShiftsSub.textContent =
+      active === 0 ? "Ninguno activo" : "En curso ahora";
+  }
 }
 
-function loadFilters() {
-  try {
-    const raw = localStorage.getItem(FILTERS_KEY);
-    const v = raw ? JSON.parse(raw) : null;
-    if (!v) return;
-
-    if (els.qSearch) els.qSearch.value = String(v.qSearch || "");
-    if (els.qDep) els.qDep.value = String(v.qDep || "all");
-    if (els.qMuni) els.qMuni.value = String(v.qMuni || "all");
-    state.selectedDep = String(v.selectedDep || "all");
-  } catch {}
-}
-
-// ---------- RENDER ----------
+// ---------- Render Dropdowns ----------
 function renderDropdowns() {
   if (els.qDep) {
-    const cur = String(els.qDep.value || "all");
-    const deps = state.meta.departamentos || [];
-    els.qDep.innerHTML =
-      `<option value="all">Todos</option>` +
-      deps.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
-    els.qDep.value = deps.includes(cur) ? cur : "all";
+    const cur = els.qDep.value || "all";
+    els.qDep.innerHTML = `<option value="all">Todos</option>`;
+    state.meta.deps.forEach((d) => {
+      const o = document.createElement("option");
+      o.value = d;
+      o.textContent = d;
+      els.qDep.appendChild(o);
+    });
+    els.qDep.value = state.meta.deps.includes(cur) ? cur : "all";
   }
 
   if (els.qMuni) {
-    const dep = String(els.qDep?.value || "all");
-    const cur = String(els.qMuni.value || "all");
-    const list =
-      dep !== "all" ? state.meta.municipiosByDepartamento?.[dep] || [] : [];
-
-    els.qMuni.innerHTML =
-      `<option value="all">Todos</option>` +
-      (dep === "all"
-        ? `<option value="all">Primero elige un departamento</option>`
-        : list.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join(""));
-
+    const dep = els.qDep?.value || "all";
+    const cur = els.qMuni.value || "all";
+    els.qMuni.innerHTML = `<option value="all">Todos</option>`;
+    const munis = dep !== "all" ? state.meta.munisByDep[dep] || [] : [];
+    munis.forEach((m) => {
+      const o = document.createElement("option");
+      o.value = m;
+      o.textContent = m;
+      els.qMuni.appendChild(o);
+    });
     if (dep === "all") els.qMuni.value = "all";
-    else els.qMuni.value = list.includes(cur) ? cur : "all";
+    else els.qMuni.value = munis.includes(cur) ? cur : "all";
   }
 }
 
+// ---------- Render Chips ----------
 function renderChips() {
   if (!els.depChips) return;
 
-  const counts = countsByDep();
-  const deps = state.meta.departamentos || [];
-
-  els.depChips.innerHTML = "";
-
-  const allChip = document.createElement("button");
-  allChip.type = "button";
-  allChip.className =
-    "chip" + (state.selectedDep === "all" ? " chip--active" : "");
-  allChip.innerHTML = `
-    <span class="material-symbols-outlined text-[18px]">apps</span>
-    Todos
-    <span class="chip-badge">${state.items.length}</span>
-  `;
-  allChip.addEventListener("click", () => trySwitchDep("all"));
-  els.depChips.appendChild(allChip);
-
-  for (const d of deps) {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip" + (state.selectedDep === d ? " chip--active" : "");
-    chip.innerHTML = `
-      <span class="material-symbols-outlined text-[18px]">map</span>
-      ${escapeHtml(d)}
-      <span class="chip-badge">${counts[d] || 0}</span>
-    `;
-    chip.addEventListener("click", () => trySwitchDep(d));
-    els.depChips.appendChild(chip);
+  // chips deben mostrar SIEMPRE todos los deps disponibles según items (no según filtro)
+  const counts = new Map();
+  for (const it of state.items) {
+    const d = it.Departamento || "—";
+    counts.set(d, (counts.get(d) || 0) + 1);
   }
 
-  els.depHint.textContent =
-    state.selectedDep === "all"
-      ? "Mostrando todos los departamentos. Usa filtros para afinar."
-      : `Mostrando: ${state.selectedDep}`;
+  const allCount = state.items.length;
 
-  els.countText.textContent = `${filtered().length} / ${state.items.length} locales`;
+  const makeChip = (label, value, count) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip";
+    btn.dataset.dep = value;
+
+    const isActive = String(state.selectedDep || "all") === value;
+    if (isActive) btn.classList.add("chip--active");
+
+    btn.innerHTML = `
+      <span>${escapeHtml(label)}</span>
+      <span class="chip-badge">${escapeHtml(count)}</span>
+    `;
+
+    btn.addEventListener("click", async () => {
+      clickFX(btn);
+
+      state.selectedDep = value;
+
+      // sincroniza dropdowns
+      if (els.qDep) els.qDep.value = value;
+      if (els.qMuni) els.qMuni.value = "all";
+
+      saveFilters();
+      renderDropdowns();
+      renderChips();
+      renderList();
+    });
+
+    return btn;
+  };
+
+  els.depChips.innerHTML = "";
+  els.depChips.appendChild(makeChip("Todos", "all", allCount));
+
+  state.meta.deps.forEach((d) => {
+    const c = counts.get(d) || 0;
+    els.depChips.appendChild(makeChip(d, d, c));
+  });
+
+  // contador superior basado en resultados filtrados reales
+  if (els.countText) {
+    const filtered = getFilteredItems();
+    const dep =
+      state.selectedDep && state.selectedDep !== "all"
+        ? state.selectedDep
+        : els.qDep?.value || "all";
+
+    const muni = els.qMuni?.value || "all";
+    const qTxt = String(els.qSearch?.value || "").trim();
+
+    const parts = [];
+    if (dep !== "all") parts.push(dep);
+    if (muni !== "all") parts.push(muni);
+    if (qTxt) parts.push(`"${qTxt}"`);
+
+    els.countText.textContent =
+      parts.length > 0
+        ? `${filtered.length} • ${parts.join(" • ")}`
+        : `${filtered.length}`;
+  }
 }
 
+// ---------- Render List ----------
 function renderList() {
   if (!els.pvList) return;
 
-  const list = filtered();
-  els.listCount.textContent = String(list.length);
-  els.pvList.innerHTML = "";
+  const list = getFilteredItems();
+  if (els.listCount) els.listCount.textContent = `${list.length} locales`;
 
   if (list.length === 0) {
-    els.pvList.innerHTML = `<div class="text-sm text-slate-600 dark:text-slate-300">No hay locales para estos filtros.</div>`;
+    els.pvList.innerHTML = `
+      <div class="text-sm text-slate-600 dark:text-slate-300 p-4">
+        No hay resultados con los filtros actuales.
+      </div>
+    `;
     return;
   }
 
-  for (const pv of list) {
-    const isSel = Number(state.selectedPV) === Number(pv.id);
-    const isDirty = state.dirtyIds.has(Number(pv.id));
+  els.pvList.innerHTML = "";
+  list
+    .slice()
+    .sort((a, b) => String(a.Barrio).localeCompare(String(b.Barrio)))
+    .forEach((it) => {
+      const row = document.createElement("div");
+      row.className = "list-item";
+      if (Number(state.selectedPV) === Number(it.id))
+        row.classList.add("list-item--active");
 
-    const row = document.createElement("div");
-    row.className = "list-item" + (isSel ? " list-item--active" : "");
-    row.innerHTML = `
-      <div class="min-w-0">
-        <div class="mini-title truncate">${escapeHtml(pv.Barrio || "—")}</div>
-        <div class="mini-muted mt-0.5">
-          ID: ${pv.id} • ${escapeHtml(pv.Departamento)} • ${escapeHtml(pv.Municipio)}
-          ${isDirty ? " • ✳️ Editado" : ""}
+      const dirty = state.dirtyIds.has(Number(it.id));
+
+      // ✅ shift status by PV ID (store_id = id)
+      const shift = state.activeShiftByPvId.get(String(it.id));
+      const hasShift = !!shift;
+
+      row.innerHTML = `
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <div class="mini-title truncate">${escapeHtml(
+              it.Barrio || "PV " + it.id
+            )}</div>
+            <span class="inline-flex items-center gap-2 text-[11px] font-black px-2 py-1 rounded-full
+              ${
+                hasShift
+                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/25 dark:text-emerald-200"
+                  : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              }">
+              <span class="status-dot ${
+                hasShift ? "dot-on" : "dot-off"
+              }"></span>
+              ${hasShift ? "Turno activo" : "Sin turno"}
+            </span>
+          </div>
+
+          <div class="mini-muted mt-1 truncate">
+            ${escapeHtml(it.Departamento || "—")} • ${escapeHtml(
+        it.Municipio || "—"
+      )}
+          </div>
+
+          <div class="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-1 truncate">
+            ${escapeHtml(it.Direccion || "")}
+          </div>
+
+          ${
+            hasShift
+              ? `<div class="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-200 mt-1 truncate">
+                   Abierto: ${escapeHtml(fmtDateTime(shift.opened_at))}
+                 </div>`
+              : ""
+          }
         </div>
-        <div class="mini-muted mt-0.5 truncate">${escapeHtml(pv.Direccion)}</div>
-      </div>
-      <div class="mini-muted">${pv.num_whatsapp ? "WA" : ""}</div>
-    `;
-    row.addEventListener("click", () => trySelectPV(pv.id));
-    els.pvList.appendChild(row);
+
+        <div class="flex flex-col items-end gap-2">
+          <div class="text-[11px] font-black text-slate-500 dark:text-slate-400">#${escapeHtml(
+            it.id
+          )}</div>
+          ${
+            dirty
+              ? `<span class="text-[10px] font-black px-2 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">PENDIENTE</span>`
+              : ""
+          }
+        </div>
+      `;
+
+      row.addEventListener("click", async () => {
+        if (Number(state.selectedPV) === Number(it.id)) return;
+
+        if (state.selectedPV && state.dirtyIds.has(Number(state.selectedPV))) {
+          const ok = await modalConfirm({
+            tone: "info",
+            icon: "warning",
+            title: "Tienes cambios sin guardar",
+            desc: "Si cambias de local, tus cambios quedarán pendientes (no se guardan automáticamente). ¿Continuar?",
+            confirmText: "Sí, cambiar",
+            cancelText: "Cancelar",
+          });
+          if (!ok) return;
+        }
+
+        state.selectedPV = Number(it.id);
+        renderList();
+        renderEditor();
+      });
+
+      els.pvList.appendChild(row);
+    });
+}
+
+// ---------- Editor ----------
+async function fetchSalesForPV(id, from, to) {
+  try {
+    return await apiJSON(API.sales(id, from, to));
+  } catch (e) {
+    return {
+      ok: false,
+      error: e.message || "Error",
+      totals: { qty: 0, revenue: 0 },
+      items: [],
+    };
   }
 }
-
-function todayISO() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-function daysAgoISO(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+async function fetchSalesForPVShift(id, from_ts, to_ts) {
+  try {
+    return await apiJSON(API.salesTS(id, from_ts, to_ts));
+  } catch (e) {
+    return {
+      ok: false,
+      error: e.message || "Error",
+      totals: { qty: 0, revenue: 0 },
+      items: [],
+    };
+  }
 }
 
 function renderEditor() {
   if (!els.editorWrap) return;
 
-  const pv = state.selectedPV ? getEffectivePV(state.selectedPV) : null;
-  if (!pv) {
-    els.selectedMeta.textContent = "—";
-    els.editorWrap.innerHTML = `<div class="text-sm text-slate-600 dark:text-slate-300">Selecciona un local para editarlo.</div>`;
+  const id = state.selectedPV;
+  if (!id) {
+    els.editorWrap.innerHTML = `
+      <div class="text-sm text-slate-600 dark:text-slate-300">
+        Selecciona un local en la columna del medio para editarlo.
+      </div>
+    `;
+    if (els.selectedMeta) els.selectedMeta.textContent = "—";
     return;
   }
 
-  els.selectedMeta.textContent = `ID: ${pv.id} • ${pv.Departamento} / ${pv.Municipio}`;
+  const pv = getEffectivePV(id);
+  if (!pv) return;
 
-  const imgUrl = (pv.URL_image || "").trim() || FALLBACK_IMG;
-  const gmaps = `https://www.google.com/maps?q=${encodeURIComponent(
-    pv.Latitud + "," + pv.Longitud
-  )}`;
+  // ✅ shift by PV ID
+  const shift = state.activeShiftByPvId.get(String(pv.id));
+  const hasShift = !!shift;
+
+  if (els.selectedMeta) {
+    els.selectedMeta.textContent = `ID ${pv.id} • ${pv.Departamento || "—"} • ${
+      pv.Municipio || "—"
+    }`;
+  }
+
+  const img = String(pv.URL_image || "").trim() || FALLBACK_IMG;
 
   els.editorWrap.innerHTML = `
-    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-      <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <div class="min-w-0">
-          <div class="text-xs font-black text-slate-500 dark:text-slate-400">Local</div>
-          <div class="text-sm font-black text-slate-900 dark:text-white truncate">${escapeHtml(pv.Barrio || "—")}</div>
+    <div class="space-y-4">
+      <div class="flex items-start gap-4">
+        <div class="img-thumb">
+          <img src="${escapeHtml(img)}" onerror="this.src='${escapeHtml(
+    FALLBACK_IMG
+  )}';" alt="PV"/>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button id="btnUploadImg" class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700 transition" type="button">
-            <span class="material-symbols-outlined text-[18px] align-[-3px]">upload</span>
-            Imagen
-          </button>
-          <button id="btnSaveCard" class="rounded-full px-4 py-2 text-sm font-black btn-primary transition" type="button">Guardar</button>
-          <button id="btnDeleteCard" class="rounded-full px-4 py-2 text-sm font-black bg-rose-600 text-white hover:bg-rose-700 transition" type="button">Eliminar</button>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="text-sm font-black text-slate-900 dark:text-white truncate">
+                ${escapeHtml(pv.Barrio || "PV " + pv.id)}
+              </div>
+              <div class="text-xs text-slate-600 dark:text-slate-300 font-bold mt-1 truncate">
+                ${escapeHtml(pv.Direccion || "")}
+              </div>
+              <div class="text-xs text-slate-500 dark:text-slate-400 font-bold mt-1 truncate">
+                ${escapeHtml(pv.Departamento || "—")} • ${escapeHtml(
+    pv.Municipio || "—"
+  )}
+              </div>
+            </div>
+
+            <div class="shrink-0">
+              <div class="inline-flex items-center gap-2 text-[12px] font-black px-3 py-2 rounded-full
+                ${
+                  hasShift
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/25 dark:text-emerald-200"
+                    : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                }">
+                <span class="status-dot ${
+                  hasShift ? "dot-on" : "dot-off"
+                }"></span>
+                ${hasShift ? "Turno activo" : "Sin turno"}
+              </div>
+            </div>
+          </div>
+
+          ${
+            hasShift
+              ? `<div class="mt-2 text-xs font-extrabold text-emerald-700 dark:text-emerald-200">
+                   Abierto: ${escapeHtml(fmtDateTime(shift.opened_at))}
+                   ${
+                     shift.admin_name
+                       ? ` • ${escapeHtml(shift.admin_name)}`
+                       : ""
+                   }
+                 </div>`
+              : `<div class="mt-2 text-xs font-bold text-slate-500 dark:text-slate-400">
+                   No hay turno activo para este local.
+                 </div>`
+          }
         </div>
       </div>
 
-      <div class="p-4 grid gap-4">
-        <div class="flex items-start gap-3">
-          <div class="img-thumb">
-            <img id="pvImg" src="${escapeHtml(imgUrl)}" alt="Imagen PV">
-          </div>
-          <div class="min-w-0">
-            <div class="text-xs font-black text-slate-500 dark:text-slate-400">Imagen (URL)</div>
-            <input id="f_img" class="field-input mt-1" type="text" value="${escapeHtml(pv.URL_image || "")}" placeholder="Se llena al subir imagen" />
-            <div class="field-hint mt-1">Bucket recomendado: <b>puntos_venta/pvimage</b> (recordKey: pv-id-${pv.id}).</div>
-          </div>
+      <div class="grid gap-3 md:grid-cols-2">
+        <div class="kpi">
+          <div class="text-xs text-slate-500 dark:text-slate-400 font-bold">Ventas del turno</div>
+          <div id="pvTurnRevenue" class="mt-1 text-2xl font-black text-slate-900 dark:text-white">—</div>
+          <div id="pvTurnQty" class="mt-1 text-xs font-extrabold text-slate-500 dark:text-slate-400">—</div>
         </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <label class="field">
-            <span class="field-label">Departamento</span>
-            <input id="f_dep" class="field-input" type="text" value="${escapeHtml(pv.Departamento)}" />
-          </label>
-
-          <label class="field">
-            <span class="field-label">Municipio</span>
-            <input id="f_muni" class="field-input" type="text" value="${escapeHtml(pv.Municipio)}" />
-          </label>
+        <div class="kpi">
+          <div class="text-xs text-slate-500 dark:text-slate-400 font-bold">Ventas HOY</div>
+          <div id="pvTodayRevenue" class="mt-1 text-2xl font-black text-slate-900 dark:text-white">—</div>
+          <div id="pvTodayQty" class="mt-1 text-xs font-extrabold text-slate-500 dark:text-slate-400">—</div>
         </div>
+        <div class="kpi">
+          <div class="text-xs text-slate-500 dark:text-slate-400 font-bold">Ventas 7D</div>
+          <div id="pv7dRevenue" class="mt-1 text-2xl font-black text-slate-900 dark:text-white">—</div>
+          <div id="pv7dQty" class="mt-1 text-xs font-extrabold text-slate-500 dark:text-slate-400">—</div>
+        </div>
+        <div class="kpi">
+          <div class="text-xs text-slate-500 dark:text-slate-400 font-bold">Ventas 30D</div>
+          <div id="pv30dRevenue" class="mt-1 text-2xl font-black text-slate-900 dark:text-white">—</div>
+          <div id="pv30dQty" class="mt-1 text-xs font-extrabold text-slate-500 dark:text-slate-400">—</div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-sm font-black text-slate-900 dark:text-white">Top productos (30D)</div>
+          <div id="pvTopMeta" class="text-xs text-slate-500 dark:text-slate-400 font-bold">—</div>
+        </div>
+        <div class="mt-3 overflow-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-slate-500 dark:text-slate-400">
+                <th class="pb-2 pr-2">Producto</th>
+                <th class="pb-2 pr-2">Qty</th>
+                <th class="pb-2 pr-2">Revenue</th>
+              </tr>
+            </thead>
+            <tbody id="pvTopTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+        <div class="text-sm font-black text-slate-900 dark:text-white">Turno</div>
+        <div id="pvShiftBox" class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          ${hasShift ? "Cargando…" : "Sin turno activo."}
+        </div>
+      </div>
+
+      <div class="grid gap-3">
+        <label class="field">
+          <span class="field-label">Departamento</span>
+          <input id="ed_Departamento" class="field-input" value="${escapeHtml(
+            pv.Departamento || ""
+          )}" placeholder="Ej: Antioquia" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Municipio</span>
+          <input id="ed_Municipio" class="field-input" value="${escapeHtml(
+            pv.Municipio || ""
+          )}" placeholder="Ej: Medellín" />
+        </label>
 
         <label class="field">
           <span class="field-label">Dirección</span>
-          <input id="f_dir" class="field-input" type="text" value="${escapeHtml(pv.Direccion)}" />
+          <input id="ed_Direccion" class="field-input" value="${escapeHtml(
+            pv.Direccion || ""
+          )}" placeholder="Ej: Cra 00 #00-00" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Barrio (UNIQUE)</span>
+          <input id="ed_Barrio" class="field-input" value="${escapeHtml(
+            pv.Barrio || ""
+          )}" placeholder="Ej: Laureles" />
+          <div class="field-hint">Este campo debe ser único en la base de datos.</div>
         </label>
 
         <div class="grid grid-cols-2 gap-3">
           <label class="field">
-            <span class="field-label">Barrio (UNIQUE)</span>
-            <input id="f_barrio" class="field-input" type="text" value="${escapeHtml(pv.Barrio)}" />
-            <span class="field-hint">Tu tabla tiene UNIQUE en Barrio: no se pueden repetir.</span>
-          </label>
-
-          <label class="field">
-            <span class="field-label">WhatsApp</span>
-            <input id="f_wa" class="field-input" type="text" inputmode="tel" value="${escapeHtml(pv.num_whatsapp || "")}" placeholder="57..." />
-          </label>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <label class="field">
             <span class="field-label">Latitud</span>
-            <input id="f_lat" class="field-input" type="text" inputmode="decimal" value="${escapeHtml(pv.Latitud)}" placeholder="6.2442" />
+            <input id="ed_Latitud" class="field-input" value="${escapeHtml(
+              pv.Latitud ?? ""
+            )}" placeholder="Ej: 6.2442" />
           </label>
+
           <label class="field">
             <span class="field-label">Longitud</span>
-            <input id="f_lng" class="field-input" type="text" inputmode="decimal" value="${escapeHtml(pv.Longitud)}" placeholder="-75.5812" />
+            <input id="ed_Longitud" class="field-input" value="${escapeHtml(
+              pv.Longitud ?? ""
+            )}" placeholder="Ej: -75.5812" />
           </label>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <a class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700 transition text-center"
-             href="${escapeHtml(gmaps)}" target="_blank" rel="noreferrer">
-            Abrir en Maps
-          </a>
-          <button id="btnLoadSales" class="rounded-full px-4 py-2 text-sm font-black btn-primary transition" type="button">
-            Ver ventas
-          </button>
-        </div>
+        <label class="field">
+          <span class="field-label">WhatsApp</span>
+          <input id="ed_num_whatsapp" class="field-input" value="${escapeHtml(
+            pv.num_whatsapp ?? ""
+          )}" placeholder="Ej: 573001234567" />
+          <div class="field-hint">Opcional. Solo números (ideal: con indicativo país).</div>
+        </label>
 
-        <div id="salesWrap" class="hidden rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-800/40">
-          <div class="flex items-center justify-between gap-2">
-            <div class="text-sm font-black text-slate-900 dark:text-white">Ventas por producto</div>
-            <div class="text-xs text-slate-500 dark:text-slate-400 font-black" id="salesMeta">—</div>
-          </div>
-
-          <div class="mt-3 grid grid-cols-2 gap-2">
-            <label class="field">
-              <span class="field-label">Desde</span>
-              <input id="salesFrom" class="field-input" type="date" />
-            </label>
-            <label class="field">
-              <span class="field-label">Hasta</span>
-              <input id="salesTo" class="field-input" type="date" />
-            </label>
-          </div>
-
-          <div class="mt-3 flex gap-2">
-            <button id="btnRefreshSales" class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700 transition" type="button">
-              Actualizar
-            </button>
-          </div>
-
-          <div class="mt-3 grid grid-cols-2 gap-2">
-            <div class="kpi">
-              <div class="text-xs font-black text-slate-500 dark:text-slate-400">Unidades</div>
-              <div id="kpiQty" class="text-lg font-black text-slate-900 dark:text-white">—</div>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-800/40">
+          <div class="text-sm font-black text-slate-900 dark:text-white">Imagen</div>
+          <div class="mt-2 grid gap-2">
+            <input id="ed_image_file" type="file" accept="image/*" class="block w-full text-sm" />
+            <div class="flex gap-2">
+              <button id="btnUploadImage" type="button" class="rounded-full px-4 py-2 text-sm font-black btn-primary">
+                Subir
+              </button>
+              <button id="btnClearImage" type="button" class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700">
+                Quitar
+              </button>
             </div>
-            <div class="kpi">
-              <div class="text-xs font-black text-slate-500 dark:text-slate-400">Ingresos</div>
-              <div id="kpiRevenue" class="text-lg font-black text-slate-900 dark:text-white">—</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 font-bold">
+              Si la URL queda vacía, se mostrará la imagen por defecto.
             </div>
           </div>
-
-          <div class="mt-3 text-xs text-slate-500 dark:text-slate-400 font-black" id="salesNote"></div>
-
-          <div class="mt-3 overflow-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="text-left text-slate-500 dark:text-slate-400">
-                  <th class="py-2 pr-2">Producto</th>
-                  <th class="py-2 pr-2">Cant</th>
-                  <th class="py-2 pr-2">$</th>
-                </tr>
-              </thead>
-              <tbody id="salesTbody" class="text-slate-900 dark:text-slate-200"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="text-xs text-slate-500 dark:text-slate-400 font-black">
-          Tip: cambios sin guardar → modal si intentas cambiar de local.
         </div>
       </div>
     </div>
   `;
 
-  const imgEl = q("pvImg");
-  if (imgEl) imgEl.onerror = () => (imgEl.src = FALLBACK_IMG);
-
-  const bind = (id) => {
-    const el = q(id);
+  const bind = (idEl, key, parser = (v) => v) => {
+    const el = q(idEl);
     if (!el) return;
-    el.addEventListener("input", commitEditorChange);
-    el.addEventListener("change", commitEditorChange);
+    el.addEventListener("input", () => {
+      setDraft(pv.id, { [key]: parser(el.value) });
+      renderList();
+    });
   };
 
-  ["f_img", "f_dep", "f_muni", "f_dir", "f_barrio", "f_wa", "f_lat", "f_lng"].forEach(bind);
-
-  q("btnUploadImg")?.addEventListener("click", uploadImageForSelected);
-  q("btnSaveCard")?.addEventListener("click", saveSelected);
-  q("btnDeleteCard")?.addEventListener("click", deleteSelected);
-
-  q("btnLoadSales")?.addEventListener("click", () => {
-    const wrap = q("salesWrap");
-    wrap?.classList?.remove?.("hidden");
-
-    // defaults: últimos 7 días
-    const fromEl = q("salesFrom");
-    const toEl = q("salesTo");
-    if (fromEl && !fromEl.value) fromEl.value = daysAgoISO(7);
-    if (toEl && !toEl.value) toEl.value = todayISO();
-
-    refreshSales();
+  bind("ed_Departamento", "Departamento", (v) => String(v || "").trim());
+  bind("ed_Municipio", "Municipio", (v) => String(v || "").trim());
+  bind("ed_Direccion", "Direccion", (v) => String(v || "").trim());
+  bind("ed_Barrio", "Barrio", (v) => String(v || "").trim());
+  bind("ed_Latitud", "Latitud", (v) =>
+    Number(String(v || "").replace(",", "."))
+  );
+  bind("ed_Longitud", "Longitud", (v) =>
+    Number(String(v || "").replace(",", "."))
+  );
+  bind("ed_num_whatsapp", "num_whatsapp", (v) => {
+    const x = String(v || "").trim();
+    return x ? x : null;
   });
 
-  q("btnRefreshSales")?.addEventListener("click", refreshSales);
-}
-
-function commitEditorChange() {
-  const id = state.selectedPV;
-  if (!id) return;
-
-  const base = getEffectivePV(id);
-  if (!base) return;
-
-  const next = { ...base };
-  next.URL_image = String(q("f_img")?.value || "");
-  next.Departamento = String(q("f_dep")?.value || "").trim();
-  next.Municipio = String(q("f_muni")?.value || "").trim();
-  next.Direccion = String(q("f_dir")?.value || "").trim();
-  next.Barrio = String(q("f_barrio")?.value || "").trim();
-  next.num_whatsapp = String(q("f_wa")?.value || "").trim();
-
-  next.Latitud = Number(String(q("f_lat")?.value || "").replace(",", "."));
-  next.Longitud = Number(String(q("f_lng")?.value || "").replace(",", "."));
-
-  setDraft(id, next);
-
-  const imgEl = q("pvImg");
-  if (imgEl) imgEl.src = next.URL_image?.trim() || FALLBACK_IMG;
-
-  saveFilters();
-}
-
-// ---------- NAV ----------
-async function trySelectPV(id) {
-  const nextId = Number(id);
-  if (Number(state.selectedPV) === nextId) return;
-
-  if (state.selectedPV && state.dirtyIds.has(Number(state.selectedPV))) {
+  q("btnClearImage")?.addEventListener("click", async () => {
     const ok = await modalConfirm({
       tone: "info",
       icon: "warning",
-      title: "Tienes cambios sin guardar",
-      desc: "Si cambias de local, se descartarán los cambios del local actual.",
-      confirmText: "Descartar y cambiar",
+      title: "Quitar imagen",
+      desc: "Se quitará la URL de la imagen del local. La imagen por defecto se mostrará en su lugar.",
+      confirmText: "Quitar",
       cancelText: "Cancelar",
     });
     if (!ok) return;
-    clearDraft(state.selectedPV);
-  }
-
-  state.selectedPV = nextId;
-  renderEditor();
-  renderList();
-}
-
-async function trySwitchDep(dep) {
-  if (String(state.selectedDep) === String(dep)) return;
-
-  if (state.selectedPV && state.dirtyIds.has(Number(state.selectedPV))) {
-    const ok = await modalConfirm({
-      tone: "info",
-      icon: "warning",
-      title: "Tienes cambios sin guardar",
-      desc: "Cambiar el departamento puede ocultar el local actual. ¿Descartar cambios?",
-      confirmText: "Descartar y cambiar",
-      cancelText: "Cancelar",
-    });
-    if (!ok) return;
-    clearDraft(state.selectedPV);
-  }
-
-  state.selectedDep = String(dep);
-
-  const visibleIds = new Set(filtered().map((x) => Number(x.id)));
-  if (state.selectedPV && !visibleIds.has(Number(state.selectedPV))) {
-    state.selectedPV = null;
+    setDraft(pv.id, { URL_image: null });
     renderEditor();
-  }
-  renderChips();
-  renderList();
-  saveFilters();
-}
+    renderList();
+  });
 
-window.addEventListener("beforeunload", (e) => {
-  if (state.dirtyIds.size > 0) {
-    e.preventDefault();
-    e.returnValue = "";
-  }
-});
+  q("btnUploadImage")?.addEventListener("click", async () => {
+    const file = q("ed_image_file")?.files?.[0];
+    if (!file) {
+      return modalAlert({
+        tone: "info",
+        icon: "info",
+        title: "Falta archivo",
+        desc: "Selecciona una imagen antes de subir.",
+      });
+    }
 
-// ---------- IMAGE ----------
-function isDeletableImageUrl(url) {
-  const u = String(url || "").trim();
-  if (!u) return false;
-  if (u === FALLBACK_IMG) return false;
-  if (u.startsWith("/") || u.startsWith("http://localhost")) return false;
-  return true;
-}
-
-async function deleteImageByUrl(publicUrl) {
-  if (!isDeletableImageUrl(publicUrl)) return { ok: true, skipped: true };
-
-  const attempts = [
-    { method: "POST", body: { publicUrl } },
-    { method: "POST", body: { url: publicUrl } },
-    { method: "POST", body: { imagen: publicUrl } },
-    { method: "DELETE", body: { publicUrl } },
-  ];
-
-  let lastErr = null;
-  for (const a of attempts) {
     try {
-      await apiJSON(API.deleteImage, a);
-      return { ok: true };
+      showLoading("Subiendo imagen…");
+      const form = new FormData();
+      form.append("file", file);
+      form.append("bucket", "puntos_venta");
+      form.append("path", "pvimage");
+      form.append("prefix", `pv_${pv.id}_`);
+
+      const data = await apiJSON(API.uploadImage, {
+        method: "POST",
+        body: form,
+      });
+
+      hideLoading();
+
+      const url = data.url || data.publicUrl || data.path || "";
+      if (!url) {
+        return modalAlert({
+          tone: "danger",
+          icon: "error",
+          title: "No se obtuvo URL",
+          desc: "El servidor respondió pero no devolvió URL.",
+        });
+      }
+
+      setDraft(pv.id, { URL_image: String(url) });
+      renderEditor();
+      renderList();
+
+      modalAlert({
+        tone: "success",
+        icon: "check_circle",
+        title: "Imagen subida",
+        desc: "No olvides Guardar el local para persistir la URL.",
+      });
     } catch (e) {
-      lastErr = e;
+      hideLoading();
+      modalErrorFriendly(e, "Subiendo imagen");
+    }
+  });
+
+  void hydratePvDashboard(pv, shift);
+}
+
+async function hydratePvDashboard(pv, shift) {
+  const id = Number(pv.id);
+  const today = dateToYYYYMMDD(new Date());
+  const from7 = dateToYYYYMMDD(daysAgo(6));
+  const from30 = dateToYYYYMMDD(daysAgo(29));
+
+  const setText = (idEl, txt) => {
+    const el = q(idEl);
+    if (!el) return;
+    el.textContent = txt;
+  };
+
+  setText("pvTurnRevenue", "—");
+  setText("pvTurnQty", "—");
+  setText("pvTodayRevenue", "—");
+  setText("pvTodayQty", "—");
+  setText("pv7dRevenue", "—");
+  setText("pv7dQty", "—");
+  setText("pv30dRevenue", "—");
+  setText("pv30dQty", "—");
+
+  const shiftBox = q("pvShiftBox");
+  if (shiftBox) {
+    if (!shift) shiftBox.textContent = "Sin turno activo.";
+    else {
+      shiftBox.innerHTML = `
+        <div class="grid gap-1 text-sm">
+          <div><b>ID:</b> ${escapeHtml(shift.id)}</div>
+          <div><b>PV ID:</b> ${escapeHtml(shift.store_id || "—")}</div>
+          <div><b>Abierto:</b> ${escapeHtml(fmtDateTime(shift.opened_at))}</div>
+          ${
+            shift.admin_name
+              ? `<div><b>Admin:</b> ${escapeHtml(shift.admin_name)}</div>`
+              : ""
+          }
+          ${
+            shift.sede_name
+              ? `<div><b>Sede:</b> ${escapeHtml(shift.sede_name)}</div>`
+              : ""
+          }
+          ${
+            shift.notes
+              ? `<div class="text-xs text-slate-500 dark:text-slate-400"><b>Notas:</b> ${escapeHtml(
+                  shift.notes
+                )}</div>`
+              : ""
+          }
+          ${
+            shift.expires_at
+              ? `<div class="text-xs font-extrabold text-amber-700 dark:text-amber-200"><b>Expira:</b> ${escapeHtml(
+                  fmtDateTime(shift.expires_at)
+                )}</div>`
+              : ""
+          }
+          ${
+            Number(shift.extended_minutes || 0)
+              ? `<div class="text-xs font-extrabold text-slate-600 dark:text-slate-300"><b>Extendido:</b> +${escapeHtml(
+                  shift.extended_minutes
+                )} min</div>`
+              : ""
+          }
+        </div>
+      `;
     }
   }
-  return { ok: false, error: lastErr?.message || "No se pudo borrar la imagen" };
+
+  let turn = { totals: { revenue: 0, qty: 0 } };
+  if (shift?.opened_at) {
+    turn = await fetchSalesForPVShift(
+      id,
+      shift.opened_at,
+      new Date().toISOString()
+    );
+  }
+  setText("pvTurnRevenue", `$ ${fmtMoney(turn.totals?.revenue ?? 0)}`);
+  setText("pvTurnQty", `${fmtNum(turn.totals?.qty ?? 0)} ítems`);
+
+  const [sToday, s7d, s30d] = await Promise.all([
+    fetchSalesForPV(id, today, today),
+    fetchSalesForPV(id, from7, today),
+    fetchSalesForPV(id, from30, today),
+  ]);
+
+  setText("pvTodayRevenue", `$ ${fmtMoney(sToday.totals?.revenue ?? 0)}`);
+  setText("pvTodayQty", `${fmtNum(sToday.totals?.qty ?? 0)} ítems`);
+
+  setText("pv7dRevenue", `$ ${fmtMoney(s7d.totals?.revenue ?? 0)}`);
+  setText("pv7dQty", `${fmtNum(s7d.totals?.qty ?? 0)} ítems`);
+
+  setText("pv30dRevenue", `$ ${fmtMoney(s30d.totals?.revenue ?? 0)}`);
+  setText("pv30dQty", `${fmtNum(s30d.totals?.qty ?? 0)} ítems`);
+
+  const tbody = q("pvTopTbody");
+  const meta = q("pvTopMeta");
+  if (meta) meta.textContent = `${from30} → ${today}`;
+
+  if (tbody) {
+    const items = Array.isArray(s30d.items) ? s30d.items.slice(0, 12) : [];
+    if (items.length === 0) {
+      tbody.innerHTML = `<tr><td class="py-2 text-slate-500 dark:text-slate-400" colspan="3">Sin ventas.</td></tr>`;
+    } else {
+      tbody.innerHTML = items
+        .map(
+          (it) => `
+        <tr class="border-t border-slate-200 dark:border-slate-800">
+          <td class="py-2 pr-2">${escapeHtml(
+            it.name || "Producto " + it.product_id
+          )}</td>
+          <td class="py-2 pr-2">${escapeHtml(it.qty ?? 0)}</td>
+          <td class="py-2 pr-2">$ ${escapeHtml(fmtMoney(it.revenue ?? 0))}</td>
+        </tr>
+      `
+        )
+        .join("");
+    }
+  }
 }
 
-function pickImageFile() {
-  return new Promise((resolve) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/webp,image/png,image/jpeg";
-    input.onchange = () =>
-      resolve(input.files && input.files[0] ? input.files[0] : null);
-    input.click();
-  });
-}
+// ---------- Image helpers ----------
+async function deleteImageByUrl(url) {
+  const u = String(url || "").trim();
+  if (!u || u === FALLBACK_IMG) return { ok: true, skipped: true };
 
-async function uploadImageForSelected() {
-  if (!state.selectedPV) {
-    return modalAlert({
-      tone: "info",
-      icon: "info",
-      title: "Sin selección",
-      desc: "Selecciona un local primero.",
-    });
-  }
-
-  const file = await pickImageFile();
-  if (!file) return;
-
-  if (file.type !== "image/webp") {
-    const ok = await modalConfirm({
-      tone: "info",
-      icon: "image",
-      title: "Sugerencia: WEBP",
-      desc: "WEBP suele ser más liviano. ¿Deseas seguir con este archivo?",
-      confirmText: "Seguir igual",
-      cancelText: "Cancelar",
-    });
-    if (!ok) return;
-  }
-
-  showLoading("Subiendo imagen…");
   try {
-    const fd = new FormData();
-    fd.append("file", file);
-
-    fd.append("scope", "puntos_venta");
-    fd.append("slot", "pvimage");
-    fd.append("recordKey", `pv-id-${state.selectedPV}`);
-
-    const data = await apiJSON(API.uploadImage, { method: "POST", body: fd });
-    const publicUrl = data.publicUrl;
-
-    const imgInput = q("f_img");
-    if (imgInput) imgInput.value = publicUrl;
-
-    commitEditorChange();
-    hideLoading();
-
-    modalAlert({
-      tone: "success",
-      icon: "check_circle",
-      title: "Imagen subida",
-      desc: "La URL se agregó al local. Recuerda guardar.",
+    const res = await apiJSON(API.deleteImage, {
+      method: "POST",
+      body: { url: u },
     });
+    return { ok: true, ...res };
   } catch (e) {
-    hideLoading();
-    modalErrorFriendly(e, "Subida de imagen PV");
+    return { ok: false, error: e.message || "Error" };
   }
 }
 
 // ---------- CRUD ----------
-async function loadMeta() {
-  const data = await apiJSON(API.meta);
-  state.meta.departamentos = data.departamentos || [];
-  state.meta.municipiosByDepartamento = data.municipiosByDepartamento || {};
-}
-
-async function loadAll() {
-  showLoading("Cargando puntos de venta…");
-  try {
-    const data = await apiJSON(API.list);
-    const raw = Array.isArray(data.items) ? data.items : [];
-    state.items = raw.map(normalizePV);
-    hideLoading();
-  } catch (e) {
-    hideLoading();
-    modalErrorFriendly(e, "Cargando PV");
-  }
-}
-
 async function doCreatePV() {
   try {
     const values = await modalForm({
       title: "Crear local",
-      desc: "Obligatorios: Departamento, Municipio, Dirección, Barrio, Latitud, Longitud. Barrio es UNIQUE.",
+      desc: "Completa los datos básicos. Luego puedes editar todo lo demás.",
+      icon: "add_business",
+      tone: "info",
       confirmText: "Crear",
+      cancelText: "Cancelar",
       fields: [
-        { name: "Departamento", label: "Departamento", type: "text", required: true, placeholder: "Antioquia" },
-        { name: "Municipio", label: "Municipio", type: "text", required: true, placeholder: "Medellín" },
-        { name: "Direccion", label: "Dirección", type: "text", required: true, placeholder: "Cra 00 #00-00" },
-        { name: "Barrio", label: "Barrio (UNIQUE)", type: "text", required: true, placeholder: "Laureles" },
-        { name: "Latitud", label: "Latitud", type: "text", required: true, placeholder: "6.2442" },
-        { name: "Longitud", label: "Longitud", type: "text", required: true, placeholder: "-75.5812" },
-        { name: "num_whatsapp", label: "WhatsApp", type: "text", required: false, placeholder: "57..." },
+        {
+          name: "Departamento",
+          label: "Departamento",
+          required: true,
+          value: "",
+        },
+        { name: "Municipio", label: "Municipio", required: true, value: "" },
+        { name: "Direccion", label: "Dirección", required: true, value: "" },
+        { name: "Barrio", label: "Barrio (UNIQUE)", required: true, value: "" },
+        {
+          name: "Latitud",
+          label: "Latitud",
+          required: true,
+          value: "",
+          placeholder: "6.2442",
+          hint: "Formato número. Puedes usar punto o coma.",
+        },
+        {
+          name: "Longitud",
+          label: "Longitud",
+          required: true,
+          value: "",
+          placeholder: "-75.5812",
+          hint: "Formato número. Puedes usar punto o coma.",
+        },
+        {
+          name: "num_whatsapp",
+          label: "WhatsApp (opcional)",
+          required: false,
+          value: "",
+          placeholder: "573001234567",
+        },
       ],
     });
 
@@ -1072,16 +1404,28 @@ async function doCreatePV() {
       URL_image: null,
     };
 
-    if (!Number.isFinite(payload.Latitud) || !Number.isFinite(payload.Longitud)) {
-      return modalAlert({ tone: "danger", icon: "error", title: "Coordenadas inválidas", desc: "Latitud y Longitud deben ser números." });
+    if (
+      !Number.isFinite(payload.Latitud) ||
+      !Number.isFinite(payload.Longitud)
+    ) {
+      return modalAlert({
+        tone: "danger",
+        icon: "error",
+        title: "Coordenadas inválidas",
+        desc: "Latitud y Longitud deben ser números.",
+      });
     }
 
     showLoading("Creando local…");
-    const created = await apiJSON(API.create, { method: "POST", body: payload });
+    const created = await apiJSON(API.create, {
+      method: "POST",
+      body: payload,
+    });
     hideLoading();
 
     await loadMeta();
     await loadAll();
+    await loadActiveShifts();
 
     state.selectedPV = created.item?.id || null;
     renderAll();
@@ -1121,12 +1465,48 @@ async function saveSelected() {
     });
   }
 
-  if (!pv.Departamento) return modalAlert({ tone: "danger", icon: "error", title: "Falta Departamento", desc: "Es obligatorio." });
-  if (!pv.Municipio) return modalAlert({ tone: "danger", icon: "error", title: "Falta Municipio", desc: "Es obligatorio." });
-  if (!pv.Direccion) return modalAlert({ tone: "danger", icon: "error", title: "Falta Dirección", desc: "Es obligatoria." });
-  if (!pv.Barrio) return modalAlert({ tone: "danger", icon: "error", title: "Falta Barrio", desc: "Es obligatorio (y es UNIQUE)." });
-  if (!Number.isFinite(pv.Latitud)) return modalAlert({ tone: "danger", icon: "error", title: "Latitud inválida", desc: "Debe ser número." });
-  if (!Number.isFinite(pv.Longitud)) return modalAlert({ tone: "danger", icon: "error", title: "Longitud inválida", desc: "Debe ser número." });
+  if (!pv.Departamento)
+    return modalAlert({
+      tone: "danger",
+      icon: "error",
+      title: "Falta Departamento",
+      desc: "Es obligatorio.",
+    });
+  if (!pv.Municipio)
+    return modalAlert({
+      tone: "danger",
+      icon: "error",
+      title: "Falta Municipio",
+      desc: "Es obligatorio.",
+    });
+  if (!pv.Direccion)
+    return modalAlert({
+      tone: "danger",
+      icon: "error",
+      title: "Falta Dirección",
+      desc: "Es obligatoria.",
+    });
+  if (!pv.Barrio)
+    return modalAlert({
+      tone: "danger",
+      icon: "error",
+      title: "Falta Barrio",
+      desc: "Es obligatorio (y es UNIQUE).",
+    });
+  if (!Number.isFinite(pv.Latitud))
+    return modalAlert({
+      tone: "danger",
+      icon: "error",
+      title: "Latitud inválida",
+      desc: "Debe ser número.",
+    });
+  if (!Number.isFinite(pv.Longitud))
+    return modalAlert({
+      tone: "danger",
+      icon: "error",
+      title: "Longitud inválida",
+      desc: "Debe ser número.",
+    });
 
   showLoading("Guardando…");
   try {
@@ -1139,6 +1519,7 @@ async function saveSelected() {
     clearDraft(pv.id);
 
     await loadMeta();
+    await loadActiveShifts();
 
     renderAll();
 
@@ -1183,7 +1564,6 @@ async function deleteSelected() {
   showLoading("Eliminando local…");
   try {
     await apiJSON(API.remove(pv.id), { method: "DELETE" });
-
     const imgRes = await deleteImageByUrl(imageUrl);
 
     hideLoading();
@@ -1193,6 +1573,7 @@ async function deleteSelected() {
     state.selectedPV = null;
 
     await loadMeta();
+    await loadActiveShifts();
     renderAll();
 
     if (imgRes.skipped) {
@@ -1224,65 +1605,6 @@ async function deleteSelected() {
   }
 }
 
-// ---------- SALES ----------
-async function refreshSales() {
-  const id = state.selectedPV;
-  if (!id) return;
-
-  const from = q("salesFrom")?.value || "";
-  const to = q("salesTo")?.value || "";
-
-  const tbody = q("salesTbody");
-  const note = q("salesNote");
-  const meta = q("salesMeta");
-  const kpiQty = q("kpiQty");
-  const kpiRevenue = q("kpiRevenue");
-
-  if (tbody) tbody.innerHTML = `<tr><td class="py-2" colspan="3">Cargando…</td></tr>`;
-  if (note) note.textContent = "";
-
-  try {
-    const data = await apiJSON(API.sales(id, from, to));
-    if (meta) {
-      meta.textContent =
-        data.from || data.to
-          ? `${data.from || "—"} → ${data.to || "—"}`
-          : "Rango: (sin filtro)";
-    }
-
-    if (kpiQty) kpiQty.textContent = String(data.totals?.qty ?? 0);
-    if (kpiRevenue) kpiRevenue.textContent = String(data.totals?.revenue ?? 0);
-
-    if (note) note.textContent = data.note ? String(data.note) : "";
-
-    const items = Array.isArray(data.items) ? data.items : [];
-    if (!tbody) return;
-
-    if (items.length === 0) {
-      tbody.innerHTML = `<tr><td class="py-2 text-slate-500 dark:text-slate-400" colspan="3">Sin ventas en este rango.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = items
-      .map(
-        (it) => `
-      <tr class="border-t border-slate-200 dark:border-slate-800">
-        <td class="py-2 pr-2">${escapeHtml(it.name || ("Producto " + it.product_id))}</td>
-        <td class="py-2 pr-2">${escapeHtml(it.qty ?? 0)}</td>
-        <td class="py-2 pr-2">${escapeHtml(it.revenue ?? 0)}</td>
-      </tr>
-    `
-      )
-      .join("");
-  } catch (e) {
-    if (tbody) {
-      tbody.innerHTML = `<tr><td class="py-2 text-rose-600" colspan="3">Error: ${escapeHtml(
-        e.message || "Error"
-      )}</td></tr>`;
-    }
-  }
-}
-
 // ---------- RENDER ALL ----------
 function renderAll() {
   renderDropdowns();
@@ -1307,14 +1629,12 @@ els.qSearch?.addEventListener("input", () => {
   renderList();
   saveFilters();
 });
-
 els.qDep?.addEventListener("change", () => {
   renderDropdowns();
   renderChips();
   renderList();
   saveFilters();
 });
-
 els.qMuni?.addEventListener("change", () => {
   renderChips();
   renderList();
@@ -1341,6 +1661,8 @@ els.btnReload?.addEventListener("click", async () => {
 
   await loadMeta();
   await loadAll();
+  await loadActiveShifts();
+  await loadGlobalDashboard();
 
   renderAll();
 });
@@ -1349,14 +1671,87 @@ els.btnAddPV?.addEventListener("click", doCreatePV);
 els.btnSaveSelected?.addEventListener("click", saveSelected);
 els.btnDeleteSelected?.addEventListener("click", deleteSelected);
 
+// -------- Dep drag scroll (ya lo tienes en tu html/css) --------
+function initDepScroller() {
+  const wrap = els.depScrollWrap;
+  if (!wrap) return;
+
+  const btnL = els.depScrollLeft;
+  const btnR = els.depScrollRight;
+
+  const updateArrows = () => {
+    if (!btnL || !btnR) return;
+    const max = wrap.scrollWidth - wrap.clientWidth;
+    const x = wrap.scrollLeft;
+    btnL.disabled = x <= 2;
+    btnR.disabled = x >= max - 2;
+  };
+
+  const scrollByAmount = (dir) => {
+    const amt = Math.max(220, Math.floor(wrap.clientWidth * 0.75));
+    wrap.scrollBy({ left: dir * amt, behavior: "smooth" });
+  };
+  btnL?.addEventListener("click", () => scrollByAmount(-1));
+  btnR?.addEventListener("click", () => scrollByAmount(1));
+
+  let isDown = false;
+  let startX = 0;
+  let startLeft = 0;
+
+  const onDown = (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    isDown = true;
+    wrap.classList.add("is-dragging");
+    startX = e.clientX;
+    startLeft = wrap.scrollLeft;
+    wrap.setPointerCapture?.(e.pointerId);
+  };
+
+  const onMove = (e) => {
+    if (!isDown) return;
+    const dx = e.clientX - startX;
+    wrap.scrollLeft = startLeft - dx;
+    e.preventDefault();
+    updateArrows();
+  };
+
+  const end = () => {
+    if (!isDown) return;
+    isDown = false;
+    wrap.classList.remove("is-dragging");
+    updateArrows();
+  };
+
+  wrap.addEventListener("pointerdown", onDown, { passive: true });
+  wrap.addEventListener("pointermove", onMove, { passive: false });
+  wrap.addEventListener("pointerup", end);
+  wrap.addEventListener("pointercancel", end);
+  wrap.addEventListener("mouseleave", end);
+
+  wrap.addEventListener("scroll", updateArrows, { passive: true });
+  window.addEventListener("resize", updateArrows);
+
+  requestAnimationFrame(updateArrows);
+}
+
 // ---------- INIT ----------
 (async function init() {
   await loadMeta();
   await loadAll();
 
-  loadFilters();     // restaura inputs/estado
-  renderAll();       // pinta
+  await loadActiveShifts();
+  await loadGlobalDashboard();
 
-  // Ajuste: si qDep restaurado, refresca municipios
+  loadFilters();
+  renderAll();
+  initDepScroller();
+
   renderDropdowns();
+
+  setInterval(async () => {
+    await loadActiveShifts();
+    await loadGlobalDashboard();
+    renderList();
+    if (state.selectedPV) renderEditor();
+  }, 60000);
 })();

@@ -52,12 +52,12 @@
         background: #fff;
         color: rgba(15, 23, 42, 0.92);
         font-weight: 900;
-        font-size: 12px;
+        font-size: 14px;
         border-radius: 9999px;
-        padding: 8px 12px;
+        padding: 10px 14px;
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
         white-space: nowrap;
         transition: transform 0.05s ease, opacity 0.12s ease;
       }
@@ -75,12 +75,39 @@
         color: rgba(19, 127, 236, 1);
       }
       .chip-badge {
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 900;
         padding: 2px 8px;
         border-radius: 9999px;
         background: rgba(19, 127, 236, 0.12);
         color: rgba(19, 127, 236, 1);
+      }
+
+      /* --- Departamento bar: drag-to-scroll + arrows --- */
+      .dep-nav {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .dep-scroll {
+        flex: 1;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 2px 0;
+        scrollbar-width: none;
+        cursor: grab;
+        -webkit-overflow-scrolling: touch;
+        position: relative;
+      }
+      .dep-scroll::-webkit-scrollbar {
+        display: none;
+      }
+      .dep-scroll.is-dragging {
+        cursor: grabbing;
+      }
+      .dep-arrow[disabled] {
+        opacity: 0.35;
+        pointer-events: none;
       }
 
       .list-item {
@@ -133,7 +160,7 @@
         gap: 6px;
       }
       .field-label {
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 900;
         color: rgba(51, 65, 85, 1);
       }
@@ -205,6 +232,58 @@
         border-color: rgba(51, 65, 85, 1);
         background: rgba(30, 41, 59, 1);
       }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 9999px;
+        display: inline-block;
+      }
+      .dot-on {
+        background: rgba(16, 185, 129, 1);
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+      }
+      .dot-off {
+        background: rgba(148, 163, 184, 1);
+      }
+
+      .dash-card {
+        border: 1px solid rgba(226, 232, 240, 1);
+        border-radius: 16px;
+        background: #fff;
+        padding: 12px 14px;
+      }
+      .dark .dash-card {
+        border-color: rgba(51, 65, 85, 1);
+        background: rgba(30, 41, 59, 1);
+      }
+      .dash-label {
+        font-size: 12px;
+        font-weight: 900;
+        color: rgba(100, 116, 139, 1);
+      }
+      .dark .dash-label {
+        color: rgba(148, 163, 184, 1);
+      }
+      .dash-value {
+        margin-top: 6px;
+        font-size: 22px;
+        font-weight: 900;
+        color: rgba(15, 23, 42, 0.95);
+        line-height: 1.1;
+      }
+      .dark .dash-value {
+        color: rgba(226, 232, 240, 0.95);
+      }
+      .dash-sub {
+        margin-top: 6px;
+        font-size: 12px;
+        font-weight: 800;
+        color: rgba(100, 116, 139, 1);
+      }
+      .dark .dash-sub {
+        color: rgba(148, 163, 184, 1);
+      }
     </style>
   </head>
 
@@ -219,18 +298,14 @@
             class="btn-icon hover:bg-slate-100 dark:hover:bg-slate-800"
             aria-label="Volver"
           >
-            <span class="material-symbols-outlined text-[22px]"
-              >arrow_back</span
-            >
+            <span class="material-symbols-outlined text-[22px]">arrow_back</span>
           </a>
 
           <div class="min-w-0">
             <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">
               Control total
             </div>
-            <h1
-              class="text-slate-900 dark:text-white text-lg font-black leading-tight truncate"
-            >
+            <h1 class="text-slate-900 dark:text-white text-lg font-black leading-tight truncate">
               Puntos de venta (PV)
             </h1>
           </div>
@@ -259,15 +334,58 @@
         </div>
       </div>
 
-      <div class="px-4 pb-3">
-        <div class="flex items-center gap-2 overflow-x-auto pb-1">
-          <div id="depChips" class="flex items-center gap-2"></div>
+      <div class="px-4 pb-4">
+        <div class="dep-nav">
+          <button
+            id="depScrollLeft"
+            type="button"
+            class="btn-icon dep-arrow hover:bg-slate-100 dark:hover:bg-slate-800"
+            aria-label="Categorías anteriores"
+          >
+            <span class="material-symbols-outlined text-[24px]">chevron_left</span>
+          </button>
+
+          <div id="depScrollWrap" class="dep-scroll">
+            <div id="depChips" class="flex items-center gap-3"></div>
+          </div>
+
+          <button
+            id="depScrollRight"
+            type="button"
+            class="btn-icon dep-arrow hover:bg-slate-100 dark:hover:bg-slate-800"
+            aria-label="Siguientes categorías"
+          >
+            <span class="material-symbols-outlined text-[24px]">chevron_right</span>
+          </button>
         </div>
-        <div
-          class="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400"
-        >
+
+        <div class="mt-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
           <div id="depHint">Filtra por Departamento y Municipio.</div>
           <div><span id="countText">—</span></div>
+        </div>
+
+        <!-- ✅ Dashboard global -->
+        <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="dash-card">
+            <div class="dash-label">Ventas HOY (global)</div>
+            <div id="dashToday" class="dash-value">—</div>
+            <div id="dashTodaySub" class="dash-sub">—</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">Ventas 7D (global)</div>
+            <div id="dash7d" class="dash-value">—</div>
+            <div id="dash7dSub" class="dash-sub">—</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">Ventas 30D (global)</div>
+            <div id="dash30d" class="dash-value">—</div>
+            <div id="dash30dSub" class="dash-sub">—</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">Turnos activos</div>
+            <div id="dashShifts" class="dash-value">—</div>
+            <div id="dashShiftsSub" class="dash-sub">—</div>
+          </div>
         </div>
       </div>
     </header>
@@ -282,9 +400,7 @@
             class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
           >
             <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-[20px] text-primary"
-                >tune</span
-              >
+              <span class="material-symbols-outlined text-[20px] text-primary">tune</span>
               <h2 class="font-black text-slate-900 dark:text-white">Filtros</h2>
             </div>
 
@@ -322,38 +438,25 @@
               </select>
             </label>
 
-            <div
-              class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 p-4"
-            >
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 p-4">
               <div class="flex items-start gap-3">
-                <div
-                  class="h-10 w-10 rounded-xl bg-primary/10 border border-primary/15 grid place-items-center text-primary"
-                >
+                <div class="h-10 w-10 rounded-xl bg-primary/10 border border-primary/15 grid place-items-center text-primary">
                   <span class="material-symbols-outlined">image</span>
                 </div>
                 <div class="min-w-0">
-                  <div
-                    class="text-sm font-black text-slate-900 dark:text-white"
-                  >
+                  <div class="text-sm font-black text-slate-900 dark:text-white">
                     Imágenes PV
                   </div>
-                  <div
-                    class="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed"
-                  >
-                    Sube WEBP o JPG/PNG. Si falla, verás
-                    <b>/img/mensaje-error.png</b>. <br />Bucket recomendado:
-                    <b>puntos_venta/pvimage</b>.
+                  <div class="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Sube WEBP o JPG/PNG. Si falla, verás <b>/img/mensaje-error.png</b>.
+                    <br />Bucket recomendado: <b>puntos_venta/pvimage</b>.
                   </div>
                 </div>
               </div>
             </div>
 
-            <div
-              class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
-            >
-              <div class="text-sm font-black text-slate-900 dark:text-white">
-                Acciones
-              </div>
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+              <div class="text-sm font-black text-slate-900 dark:text-white">Acciones</div>
               <div class="mt-3 grid gap-2">
                 <button
                   id="btnSaveSelected"
@@ -370,9 +473,7 @@
                   Eliminar (seleccionado)
                 </button>
               </div>
-              <div
-                class="mt-3 text-xs text-slate-500 dark:text-slate-400 font-bold"
-              >
+              <div class="mt-3 text-xs text-slate-500 dark:text-slate-400 font-bold">
                 Si cambias de local con cambios sin guardar, aparecerá un modal.
               </div>
             </div>
@@ -387,9 +488,7 @@
             class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
           >
             <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-[20px] text-primary"
-                >store</span
-              >
+              <span class="material-symbols-outlined text-[20px] text-primary">store</span>
               <h2 class="font-black text-slate-900 dark:text-white">Locales</h2>
             </div>
             <div class="text-xs text-slate-500 dark:text-slate-400 font-bold">
@@ -410,15 +509,10 @@
             class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
           >
             <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-[20px] text-primary"
-                >edit</span
-              >
+              <span class="material-symbols-outlined text-[20px] text-primary">edit</span>
               <h2 class="font-black text-slate-900 dark:text-white">Edición</h2>
             </div>
-            <div
-              class="text-xs text-slate-500 dark:text-slate-400 font-bold"
-              id="selectedMeta"
-            >
+            <div class="text-xs text-slate-500 dark:text-slate-400 font-bold" id="selectedMeta">
               —
             </div>
           </div>
@@ -449,36 +543,17 @@
           class="modal-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-5"
         >
           <div class="flex items-start gap-3">
-            <div
-              id="uiModalIconWrap"
-              class="mt-0.5 h-10 w-10 rounded-xl border grid place-items-center"
-            >
-              <span
-                id="uiModalIcon"
-                class="material-symbols-outlined text-[22px]"
-                >info</span
-              >
+            <div id="uiModalIconWrap" class="mt-0.5 h-10 w-10 rounded-xl border grid place-items-center">
+              <span id="uiModalIcon" class="material-symbols-outlined text-[22px]">info</span>
             </div>
 
             <div class="flex-1">
-              <h3
-                id="uiModalTitle"
-                class="text-base font-black text-slate-900 dark:text-white tracking-tight"
-              >
-                —
-              </h3>
-              <div
-                id="uiModalDesc"
-                class="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed"
-              ></div>
+              <h3 id="uiModalTitle" class="text-base font-black text-slate-900 dark:text-white tracking-tight">—</h3>
+              <div id="uiModalDesc" class="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed"></div>
               <div id="uiModalBody" class="mt-3"></div>
             </div>
 
-            <button
-              class="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10"
-              data-ui-close
-              aria-label="Cerrar"
-            >
+            <button class="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10" data-ui-close aria-label="Cerrar">
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
