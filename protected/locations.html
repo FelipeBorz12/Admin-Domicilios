@@ -23,6 +23,39 @@
         --primary: #137fec;
       }
 
+      /* ✅ FIX: overlays hidden NO pueden capturar clicks (PC issue) */
+      .loading-overlay.hidden,
+      .modal-overlay.hidden,
+      .loading-overlay,
+      .modal-overlay,
+
+      /* ✅ click animation */
+      .click-pop {
+        transform: translateY(0);
+        transition: transform 0.06s ease, filter 0.12s ease, opacity 0.12s ease;
+        will-change: transform;
+      }
+      .click-pop:active {
+        transform: translateY(1px) scale(0.99);
+      }
+      .clicking {
+        animation: clickPulse 220ms ease;
+      }
+      @keyframes clickPulse {
+        0% {
+          transform: scale(1);
+          filter: brightness(1);
+        }
+        50% {
+          transform: scale(0.985);
+          filter: brightness(1.06);
+        }
+        100% {
+          transform: scale(1);
+          filter: brightness(1);
+        }
+      }
+
       .btn-primary {
         background: var(--primary);
         color: #fff;
@@ -222,31 +255,7 @@
         display: block;
       }
 
-      .kpi {
-        border: 1px solid rgba(226, 232, 240, 1);
-        border-radius: 16px;
-        padding: 12px 14px;
-        background: #fff;
-      }
-      .dark .kpi {
-        border-color: rgba(51, 65, 85, 1);
-        background: rgba(30, 41, 59, 1);
-      }
-
-      .status-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 9999px;
-        display: inline-block;
-      }
-      .dot-on {
-        background: rgba(16, 185, 129, 1);
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
-      }
-      .dot-off {
-        background: rgba(148, 163, 184, 1);
-      }
-
+      /* --- Dashboard modal --- */
       .dash-card {
         border: 1px solid rgba(226, 232, 240, 1);
         border-radius: 16px;
@@ -284,6 +293,20 @@
       .dark .dash-sub {
         color: rgba(148, 163, 184, 1);
       }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 9999px;
+        display: inline-block;
+      }
+      .dot-on {
+        background: rgba(16, 185, 129, 1);
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+      }
+      .dot-off {
+        background: rgba(148, 163, 184, 1);
+      }
     </style>
   </head>
 
@@ -295,17 +318,21 @@
         <div class="flex items-center gap-3 min-w-0">
           <a
             href="/admin"
-            class="btn-icon hover:bg-slate-100 dark:hover:bg-slate-800"
+            class="btn-icon hover:bg-slate-100 dark:hover:bg-slate-800 click-pop"
             aria-label="Volver"
           >
-            <span class="material-symbols-outlined text-[22px]">arrow_back</span>
+            <span class="material-symbols-outlined text-[22px]"
+              >arrow_back</span
+            >
           </a>
 
           <div class="min-w-0">
             <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">
               Control total
             </div>
-            <h1 class="text-slate-900 dark:text-white text-lg font-black leading-tight truncate">
+            <h1
+              class="text-slate-900 dark:text-white text-lg font-black leading-tight truncate"
+            >
               Puntos de venta (PV)
             </h1>
           </div>
@@ -320,14 +347,25 @@
 
         <div class="flex items-center gap-2">
           <button
+            id="btnDashboard"
+            class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700 transition click-pop"
+            type="button"
+          >
+            Dashboard
+          </button>
+
+          <button
             id="btnReload"
-            class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700 transition"
+            class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700 transition click-pop"
+            type="button"
           >
             Recargar
           </button>
+
           <button
             id="btnAddPV"
-            class="rounded-full px-4 py-2 text-sm font-black btn-primary transition"
+            class="rounded-full px-4 py-2 text-sm font-black btn-primary transition click-pop"
+            type="button"
           >
             + Local
           </button>
@@ -339,10 +377,12 @@
           <button
             id="depScrollLeft"
             type="button"
-            class="btn-icon dep-arrow hover:bg-slate-100 dark:hover:bg-slate-800"
+            class="btn-icon dep-arrow hover:bg-slate-100 dark:hover:bg-slate-800 click-pop"
             aria-label="Categorías anteriores"
           >
-            <span class="material-symbols-outlined text-[24px]">chevron_left</span>
+            <span class="material-symbols-outlined text-[24px]"
+              >chevron_left</span
+            >
           </button>
 
           <div id="depScrollWrap" class="dep-scroll">
@@ -352,40 +392,20 @@
           <button
             id="depScrollRight"
             type="button"
-            class="btn-icon dep-arrow hover:bg-slate-100 dark:hover:bg-slate-800"
+            class="btn-icon dep-arrow hover:bg-slate-100 dark:hover:bg-slate-800 click-pop"
             aria-label="Siguientes categorías"
           >
-            <span class="material-symbols-outlined text-[24px]">chevron_right</span>
+            <span class="material-symbols-outlined text-[24px]"
+              >chevron_right</span
+            >
           </button>
         </div>
 
-        <div class="mt-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
+        <div
+          class="mt-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+        >
           <div id="depHint">Filtra por Departamento y Municipio.</div>
           <div><span id="countText">—</span></div>
-        </div>
-
-        <!-- ✅ Dashboard global -->
-        <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div class="dash-card">
-            <div class="dash-label">Ventas HOY (global)</div>
-            <div id="dashToday" class="dash-value">—</div>
-            <div id="dashTodaySub" class="dash-sub">—</div>
-          </div>
-          <div class="dash-card">
-            <div class="dash-label">Ventas 7D (global)</div>
-            <div id="dash7d" class="dash-value">—</div>
-            <div id="dash7dSub" class="dash-sub">—</div>
-          </div>
-          <div class="dash-card">
-            <div class="dash-label">Ventas 30D (global)</div>
-            <div id="dash30d" class="dash-value">—</div>
-            <div id="dash30dSub" class="dash-sub">—</div>
-          </div>
-          <div class="dash-card">
-            <div class="dash-label">Turnos activos</div>
-            <div id="dashShifts" class="dash-value">—</div>
-            <div id="dashShiftsSub" class="dash-sub">—</div>
-          </div>
         </div>
       </div>
     </header>
@@ -400,13 +420,15 @@
             class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
           >
             <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-[20px] text-primary">tune</span>
+              <span class="material-symbols-outlined text-[20px] text-primary"
+                >tune</span
+              >
               <h2 class="font-black text-slate-900 dark:text-white">Filtros</h2>
             </div>
 
             <button
               id="btnReset"
-              class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700 transition"
+              class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700 transition click-pop"
               type="button"
             >
               Reset
@@ -426,54 +448,65 @@
 
             <label class="field">
               <span class="field-label">Departamento</span>
-              <select id="qDep" class="field-select">
-                <option value="all">Todos</option>
-              </select>
+              <select id="qDep" class="field-select"></select>
             </label>
 
             <label class="field">
               <span class="field-label">Municipio</span>
-              <select id="qMuni" class="field-select">
-                <option value="all">Todos</option>
-              </select>
+              <select id="qMuni" class="field-select"></select>
             </label>
 
-            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 p-4">
+            <div
+              class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 p-4"
+            >
               <div class="flex items-start gap-3">
-                <div class="h-10 w-10 rounded-xl bg-primary/10 border border-primary/15 grid place-items-center text-primary">
+                <div
+                  class="h-10 w-10 rounded-xl bg-primary/10 border border-primary/15 grid place-items-center text-primary"
+                >
                   <span class="material-symbols-outlined">image</span>
                 </div>
                 <div class="min-w-0">
-                  <div class="text-sm font-black text-slate-900 dark:text-white">
+                  <div
+                    class="text-sm font-black text-slate-900 dark:text-white"
+                  >
                     Imágenes PV
                   </div>
-                  <div class="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Sube WEBP o JPG/PNG. Si falla, verás <b>/img/mensaje-error.png</b>.
-                    <br />Bucket recomendado: <b>puntos_venta/pvimage</b>.
+                  <div
+                    class="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed"
+                  >
+                    Sube WEBP o JPG/PNG. Si falla, verás
+                    <b>/img/mensaje-error.png</b>. <br />Bucket recomendado:
+                    <b>puntos_venta/pvimage</b>.
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-              <div class="text-sm font-black text-slate-900 dark:text-white">Acciones</div>
+            <div
+              class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
+            >
+              <div class="text-sm font-black text-slate-900 dark:text-white">
+                Acciones
+              </div>
               <div class="mt-3 grid gap-2">
                 <button
                   id="btnSaveSelected"
-                  class="rounded-full px-5 py-2.5 text-sm font-black btn-primary"
+                  class="rounded-full px-5 py-2.5 text-sm font-black btn-primary click-pop"
                   type="button"
                 >
                   Guardar (seleccionado)
                 </button>
                 <button
                   id="btnDeleteSelected"
-                  class="rounded-full px-5 py-2.5 text-sm font-black bg-rose-600 text-white hover:bg-rose-700 transition"
+                  class="rounded-full px-5 py-2.5 text-sm font-black bg-rose-600 text-white hover:bg-rose-700 transition click-pop"
                   type="button"
                 >
                   Eliminar (seleccionado)
                 </button>
               </div>
-              <div class="mt-3 text-xs text-slate-500 dark:text-slate-400 font-bold">
+              <div
+                class="mt-3 text-xs text-slate-500 dark:text-slate-400 font-bold"
+              >
                 Si cambias de local con cambios sin guardar, aparecerá un modal.
               </div>
             </div>
@@ -488,7 +521,9 @@
             class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
           >
             <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-[20px] text-primary">store</span>
+              <span class="material-symbols-outlined text-[20px] text-primary"
+                >store</span
+              >
               <h2 class="font-black text-slate-900 dark:text-white">Locales</h2>
             </div>
             <div class="text-xs text-slate-500 dark:text-slate-400 font-bold">
@@ -509,10 +544,15 @@
             class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
           >
             <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-[20px] text-primary">edit</span>
+              <span class="material-symbols-outlined text-[20px] text-primary"
+                >edit</span
+              >
               <h2 class="font-black text-slate-900 dark:text-white">Edición</h2>
             </div>
-            <div class="text-xs text-slate-500 dark:text-slate-400 font-bold" id="selectedMeta">
+            <div
+              class="text-xs text-slate-500 dark:text-slate-400 font-bold"
+              id="selectedMeta"
+            >
               —
             </div>
           </div>
@@ -543,22 +583,115 @@
           class="modal-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-5"
         >
           <div class="flex items-start gap-3">
-            <div id="uiModalIconWrap" class="mt-0.5 h-10 w-10 rounded-xl border grid place-items-center">
-              <span id="uiModalIcon" class="material-symbols-outlined text-[22px]">info</span>
+            <div
+              id="uiModalIconWrap"
+              class="mt-0.5 h-10 w-10 rounded-xl border grid place-items-center"
+            >
+              <span
+                id="uiModalIcon"
+                class="material-symbols-outlined text-[22px]"
+                >info</span
+              >
             </div>
 
             <div class="flex-1">
-              <h3 id="uiModalTitle" class="text-base font-black text-slate-900 dark:text-white tracking-tight">—</h3>
-              <div id="uiModalDesc" class="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed"></div>
+              <h3
+                id="uiModalTitle"
+                class="text-base font-black text-slate-900 dark:text-white tracking-tight"
+              >
+                —
+              </h3>
+              <div
+                id="uiModalDesc"
+                class="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed"
+              ></div>
               <div id="uiModalBody" class="mt-3"></div>
             </div>
 
-            <button class="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10" data-ui-close aria-label="Cerrar">
+            <button
+              class="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 click-pop"
+              data-ui-close
+              aria-label="Cerrar"
+            >
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
 
           <div id="uiModalActions" class="mt-5 flex justify-end gap-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✅ Dashboard modal (no invasivo) -->
+    <!-- ✅ Dashboard modal (usa las mismas clases del modal genérico para que styles.css lo pinte bien) -->
+    <div id="dashModal" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-dash-close></div>
+      <div class="modal-wrap" role="dialog" aria-modal="true">
+        <div
+          class="modal-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-5"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-start gap-3">
+              <div
+                class="mt-0.5 h-10 w-10 rounded-xl border grid place-items-center bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
+              >
+                <span
+                  class="material-symbols-outlined text-[22px] text-slate-700 dark:text-slate-200"
+                  >monitoring</span
+                >
+              </div>
+              <div>
+                <h3
+                  class="text-base font-black text-slate-900 dark:text-white tracking-tight"
+                >
+                  Dashboard global
+                </h3>
+                <div
+                  id="dashSub"
+                  class="mt-1 text-sm text-slate-600 dark:text-slate-300"
+                >
+                  Pulsa “Cargar” para ver ventas y turnos.
+                </div>
+              </div>
+            </div>
+
+            <button
+              id="btnDashClose"
+              class="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 click-pop"
+              type="button"
+              aria-label="Cerrar"
+            >
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div class="mt-4 flex items-center justify-between gap-2">
+            <div
+              class="text-xs text-slate-500 dark:text-slate-400 font-bold"
+              id="dashRange"
+            >
+              —
+            </div>
+            <div class="flex gap-2">
+              <button
+                id="btnDashLoad"
+                type="button"
+                class="rounded-full px-4 py-2 text-sm font-black btn-primary click-pop"
+              >
+                Cargar
+              </button>
+              <button
+                id="btnDashRefresh"
+                type="button"
+                class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700 click-pop"
+                disabled
+              >
+                Actualizar
+              </button>
+            </div>
+          </div>
+
+          <div id="dashMount" class="mt-4"></div>
         </div>
       </div>
     </div>

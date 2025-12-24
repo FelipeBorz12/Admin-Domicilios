@@ -22,7 +22,7 @@ const API = {
     return `/api/admin/pv/${id}/sales-ts?` + qs.toString();
   },
 
-  // ✅ dashboard global
+  // ✅ dashboard global (totales por rango)
   salesSummary: (from, to) => {
     const qs = new URLSearchParams();
     if (from) qs.set("from", from);
@@ -55,6 +55,12 @@ function escapeHtml(s) {
         "'": "&#39;",
       }[m])
   );
+}
+
+function clickFX(el) {
+  if (!el) return;
+  el.classList.add("clicking");
+  setTimeout(() => el.classList.remove("clicking"), 260);
 }
 
 async function apiJSON(url, opts = {}) {
@@ -115,6 +121,15 @@ const els = {
   btnReload: q("btnReload"),
   btnAddPV: q("btnAddPV"),
 
+  btnDashboard: q("btnDashboard"),
+  dashModal: q("dashModal"),
+  btnDashClose: q("btnDashClose"),
+  btnDashLoad: q("btnDashLoad"),
+  btnDashRefresh: q("btnDashRefresh"),
+  dashMount: q("dashMount"),
+  dashSub: q("dashSub"),
+  dashRange: q("dashRange"),
+
   pvList: q("pvList"),
   listCount: q("listCount"),
 
@@ -124,16 +139,6 @@ const els = {
 
   btnSaveSelected: q("btnSaveSelected"),
   btnDeleteSelected: q("btnDeleteSelected"),
-
-  // ✅ global dashboard
-  dashToday: q("dashToday"),
-  dashTodaySub: q("dashTodaySub"),
-  dash7d: q("dash7d"),
-  dash7dSub: q("dash7dSub"),
-  dash30d: q("dash30d"),
-  dash30dSub: q("dash30dSub"),
-  dashShifts: q("dashShifts"),
-  dashShiftsSub: q("dashShiftsSub"),
 };
 
 function hasModalUI() {
@@ -203,7 +208,7 @@ function openModal({
     btn.type = "button";
     btn.textContent = a.label || "Aceptar";
     btn.className =
-      "rounded-full px-5 py-2.5 text-sm font-black transition border";
+      "rounded-full px-5 py-2.5 text-sm font-black transition border click-pop";
 
     if (a.variant === "danger") {
       btn.classList.add(
@@ -234,6 +239,7 @@ function openModal({
     }
 
     btn.addEventListener("click", async () => {
+      clickFX(btn);
       if (a.onClick) await a.onClick();
     });
     els.uiModalActions.appendChild(btn);
@@ -458,15 +464,11 @@ function daysAgo(n) {
 }
 function fmtMoney(n) {
   const x = Number(n || 0);
-  return x.toLocaleString("es-CO", {
-    maximumFractionDigits: 0,
-  });
+  return x.toLocaleString("es-CO", { maximumFractionDigits: 0 });
 }
 function fmtNum(n) {
   const x = Number(n || 0);
-  return x.toLocaleString("es-CO", {
-    maximumFractionDigits: 0,
-  });
+  return x.toLocaleString("es-CO", { maximumFractionDigits: 0 });
 }
 function fmtDateTime(iso) {
   if (!iso) return "—";
@@ -486,9 +488,13 @@ const state = {
   draftById: new Map(),
   dirtyIds: new Set(),
 
-  // ✅ shifts (store_id = PV id)
   activeShifts: [],
-  activeShiftByPvId: new Map(), // String(pv.id) -> shift
+  activeShiftByPvId: new Map(),
+
+  dashboard: {
+    loaded: false,
+    lastPayload: null,
+  },
 };
 
 function saveFilters() {
@@ -539,8 +545,6 @@ function getFilteredItems() {
     .trim()
     .toLowerCase();
 
-  // Fuente de verdad: state.selectedDep (chips) si no es all,
-  // si está en all, usamos dropdown
   const depFromState = String(state.selectedDep || "all");
   const dep = depFromState !== "all" ? depFromState : els.qDep?.value || "all";
   const muni = els.qMuni?.value || "all";
@@ -581,7 +585,7 @@ function clearDraft(id) {
 async function loadMeta() {
   const data = await apiJSON(API.meta);
 
-  // ✅ tu backend devuelve {departamentos, municipiosByDepartamento}
+  // ✅ ahora viene desde Departamentos_list / Municipio_list
   const deps = Array.isArray(data.departamentos) ? data.departamentos : [];
   const munisByDep =
     data.municipiosByDepartamento &&
@@ -591,10 +595,9 @@ async function loadMeta() {
 
   state.meta = { deps, munisByDep };
 }
+
 async function loadAll() {
   const data = await apiJSON(API.list);
-
-  // ✅ tu backend devuelve {items: [...]}
   state.items = Array.isArray(data.items) ? data.items.map(normalizePV) : [];
 }
 
@@ -618,59 +621,9 @@ async function loadActiveShifts() {
   }
 }
 
-// ✅ global sales dashboard
-async function loadGlobalDashboard() {
-  const set = (el, val) => {
-    if (!el) return;
-    el.textContent = val;
-  };
-
-  set(els.dashToday, "—");
-  set(els.dash7d, "—");
-  set(els.dash30d, "—");
-  set(els.dashShifts, "—");
-
-  set(els.dashTodaySub, "—");
-  set(els.dash7dSub, "—");
-  set(els.dash30dSub, "—");
-  set(els.dashShiftsSub, "—");
-
-  const today = dateToYYYYMMDD(new Date());
-  const from7 = dateToYYYYMMDD(daysAgo(6));
-  const from30 = dateToYYYYMMDD(daysAgo(29));
-
-  try {
-    const [sToday, s7d, s30d] = await Promise.all([
-      apiJSON(API.salesSummary(today, today)),
-      apiJSON(API.salesSummary(from7, today)),
-      apiJSON(API.salesSummary(from30, today)),
-    ]);
-
-    set(els.dashToday, `$ ${fmtMoney(sToday.totals?.revenue ?? 0)}`);
-    set(els.dashTodaySub, `${fmtNum(sToday.totals?.qty ?? 0)} ítems`);
-
-    set(els.dash7d, `$ ${fmtMoney(s7d.totals?.revenue ?? 0)}`);
-    set(els.dash7dSub, `${fmtNum(s7d.totals?.qty ?? 0)} ítems`);
-
-    set(els.dash30d, `$ ${fmtMoney(s30d.totals?.revenue ?? 0)}`);
-    set(els.dash30dSub, `${fmtNum(s30d.totals?.qty ?? 0)} ítems`);
-  } catch (e) {
-    console.warn("[global sales] error:", e?.message || e);
-    set(els.dashToday, "—");
-    set(els.dash7d, "—");
-    set(els.dash30d, "—");
-  }
-
-  const active = state.activeShifts?.length || 0;
-  set(els.dashShifts, fmtNum(active));
-  if (els.dashShiftsSub) {
-    els.dashShiftsSub.textContent =
-      active === 0 ? "Ninguno activo" : "En curso ahora";
-  }
-}
-
 // ---------- Render Dropdowns ----------
 function renderDropdowns() {
+  // Departamento
   if (els.qDep) {
     const cur = els.qDep.value || "all";
     els.qDep.innerHTML = `<option value="all">Todos</option>`;
@@ -683,10 +636,16 @@ function renderDropdowns() {
     els.qDep.value = state.meta.deps.includes(cur) ? cur : "all";
   }
 
+  // Municipio depende del departamento seleccionado (state > dropdown)
   if (els.qMuni) {
-    const dep = els.qDep?.value || "all";
+    const dep =
+      state.selectedDep && state.selectedDep !== "all"
+        ? state.selectedDep
+        : els.qDep?.value || "all";
+
     const cur = els.qMuni.value || "all";
     els.qMuni.innerHTML = `<option value="all">Todos</option>`;
+
     const munis = dep !== "all" ? state.meta.munisByDep[dep] || [] : [];
     munis.forEach((m) => {
       const o = document.createElement("option");
@@ -694,6 +653,7 @@ function renderDropdowns() {
       o.textContent = m;
       els.qMuni.appendChild(o);
     });
+
     if (dep === "all") els.qMuni.value = "all";
     else els.qMuni.value = munis.includes(cur) ? cur : "all";
   }
@@ -703,19 +663,17 @@ function renderDropdowns() {
 function renderChips() {
   if (!els.depChips) return;
 
-  // chips deben mostrar SIEMPRE todos los deps disponibles según items (no según filtro)
   const counts = new Map();
   for (const it of state.items) {
     const d = it.Departamento || "—";
     counts.set(d, (counts.get(d) || 0) + 1);
   }
-
   const allCount = state.items.length;
 
   const makeChip = (label, value, count) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "chip";
+    btn.className = "chip click-pop";
     btn.dataset.dep = value;
 
     const isActive = String(state.selectedDep || "all") === value;
@@ -728,7 +686,6 @@ function renderChips() {
 
     btn.addEventListener("click", async () => {
       clickFX(btn);
-
       state.selectedDep = value;
 
       // sincroniza dropdowns
@@ -752,7 +709,6 @@ function renderChips() {
     els.depChips.appendChild(makeChip(d, d, c));
   });
 
-  // contador superior basado en resultados filtrados reales
   if (els.countText) {
     const filtered = getFilteredItems();
     const dep =
@@ -797,13 +753,11 @@ function renderList() {
     .sort((a, b) => String(a.Barrio).localeCompare(String(b.Barrio)))
     .forEach((it) => {
       const row = document.createElement("div");
-      row.className = "list-item";
+      row.className = "list-item click-pop";
       if (Number(state.selectedPV) === Number(it.id))
         row.classList.add("list-item--active");
 
       const dirty = state.dirtyIds.has(Number(it.id));
-
-      // ✅ shift status by PV ID (store_id = id)
       const shift = state.activeShiftByPvId.get(String(it.id));
       const hasShift = !!shift;
 
@@ -858,6 +812,7 @@ function renderList() {
       `;
 
       row.addEventListener("click", async () => {
+        clickFX(row);
         if (Number(state.selectedPV) === Number(it.id)) return;
 
         if (state.selectedPV && state.dirtyIds.has(Number(state.selectedPV))) {
@@ -881,7 +836,7 @@ function renderList() {
     });
 }
 
-// ---------- Editor ----------
+// ---------- Editor (ventas PV) ----------
 async function fetchSalesForPV(id, from, to) {
   try {
     return await apiJSON(API.sales(id, from, to));
@@ -924,7 +879,6 @@ function renderEditor() {
   const pv = getEffectivePV(id);
   if (!pv) return;
 
-  // ✅ shift by PV ID
   const shift = state.activeShiftByPvId.get(String(pv.id));
   const hasShift = !!shift;
 
@@ -993,32 +947,10 @@ function renderEditor() {
         </div>
       </div>
 
-      <div class="grid gap-3 md:grid-cols-2">
-        <div class="kpi">
-          <div class="text-xs text-slate-500 dark:text-slate-400 font-bold">Ventas del turno</div>
-          <div id="pvTurnRevenue" class="mt-1 text-2xl font-black text-slate-900 dark:text-white">—</div>
-          <div id="pvTurnQty" class="mt-1 text-xs font-extrabold text-slate-500 dark:text-slate-400">—</div>
-        </div>
-        <div class="kpi">
-          <div class="text-xs text-slate-500 dark:text-slate-400 font-bold">Ventas HOY</div>
-          <div id="pvTodayRevenue" class="mt-1 text-2xl font-black text-slate-900 dark:text-white">—</div>
-          <div id="pvTodayQty" class="mt-1 text-xs font-extrabold text-slate-500 dark:text-slate-400">—</div>
-        </div>
-        <div class="kpi">
-          <div class="text-xs text-slate-500 dark:text-slate-400 font-bold">Ventas 7D</div>
-          <div id="pv7dRevenue" class="mt-1 text-2xl font-black text-slate-900 dark:text-white">—</div>
-          <div id="pv7dQty" class="mt-1 text-xs font-extrabold text-slate-500 dark:text-slate-400">—</div>
-        </div>
-        <div class="kpi">
-          <div class="text-xs text-slate-500 dark:text-slate-400 font-bold">Ventas 30D</div>
-          <div id="pv30dRevenue" class="mt-1 text-2xl font-black text-slate-900 dark:text-white">—</div>
-          <div id="pv30dQty" class="mt-1 text-xs font-extrabold text-slate-500 dark:text-slate-400">—</div>
-        </div>
-      </div>
-
+      <!-- (Opcional) aquí dejas ventas PV si quieres, pero no global -->
       <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
         <div class="flex items-center justify-between gap-2">
-          <div class="text-sm font-black text-slate-900 dark:text-white">Top productos (30D)</div>
+          <div class="text-sm font-black text-slate-900 dark:text-white">Resumen de ventas (30D)</div>
           <div id="pvTopMeta" class="text-xs text-slate-500 dark:text-slate-400 font-bold">—</div>
         </div>
         <div class="mt-3 overflow-auto">
@@ -1101,10 +1033,10 @@ function renderEditor() {
           <div class="mt-2 grid gap-2">
             <input id="ed_image_file" type="file" accept="image/*" class="block w-full text-sm" />
             <div class="flex gap-2">
-              <button id="btnUploadImage" type="button" class="rounded-full px-4 py-2 text-sm font-black btn-primary">
+              <button id="btnUploadImage" type="button" class="rounded-full px-4 py-2 text-sm font-black btn-primary click-pop">
                 Subir
               </button>
-              <button id="btnClearImage" type="button" class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700">
+              <button id="btnClearImage" type="button" class="rounded-full px-4 py-2 text-sm font-black btn-soft border border-slate-200 dark:border-slate-700 click-pop">
                 Quitar
               </button>
             </div>
@@ -1141,7 +1073,8 @@ function renderEditor() {
     return x ? x : null;
   });
 
-  q("btnClearImage")?.addEventListener("click", async () => {
+  q("btnClearImage")?.addEventListener("click", async (e) => {
+    clickFX(e.currentTarget);
     const ok = await modalConfirm({
       tone: "info",
       icon: "warning",
@@ -1156,7 +1089,8 @@ function renderEditor() {
     renderList();
   });
 
-  q("btnUploadImage")?.addEventListener("click", async () => {
+  q("btnUploadImage")?.addEventListener("click", async (e) => {
+    clickFX(e.currentTarget);
     const file = q("ed_image_file")?.files?.[0];
     if (!file) {
       return modalAlert({
@@ -1202,35 +1136,20 @@ function renderEditor() {
         title: "Imagen subida",
         desc: "No olvides Guardar el local para persistir la URL.",
       });
-    } catch (e) {
+    } catch (e2) {
       hideLoading();
-      modalErrorFriendly(e, "Subiendo imagen");
+      modalErrorFriendly(e2, "Subiendo imagen");
     }
   });
 
-  void hydratePvDashboard(pv, shift);
+  // Solo “top productos 30D” (no dashboard global)
+  void hydratePvMini(pv, shift);
 }
 
-async function hydratePvDashboard(pv, shift) {
+async function hydratePvMini(pv, shift) {
   const id = Number(pv.id);
   const today = dateToYYYYMMDD(new Date());
-  const from7 = dateToYYYYMMDD(daysAgo(6));
   const from30 = dateToYYYYMMDD(daysAgo(29));
-
-  const setText = (idEl, txt) => {
-    const el = q(idEl);
-    if (!el) return;
-    el.textContent = txt;
-  };
-
-  setText("pvTurnRevenue", "—");
-  setText("pvTurnQty", "—");
-  setText("pvTodayRevenue", "—");
-  setText("pvTodayQty", "—");
-  setText("pv7dRevenue", "—");
-  setText("pv7dQty", "—");
-  setText("pv30dRevenue", "—");
-  setText("pv30dQty", "—");
 
   const shiftBox = q("pvShiftBox");
   if (shiftBox) {
@@ -1251,62 +1170,17 @@ async function hydratePvDashboard(pv, shift) {
               ? `<div><b>Sede:</b> ${escapeHtml(shift.sede_name)}</div>`
               : ""
           }
-          ${
-            shift.notes
-              ? `<div class="text-xs text-slate-500 dark:text-slate-400"><b>Notas:</b> ${escapeHtml(
-                  shift.notes
-                )}</div>`
-              : ""
-          }
-          ${
-            shift.expires_at
-              ? `<div class="text-xs font-extrabold text-amber-700 dark:text-amber-200"><b>Expira:</b> ${escapeHtml(
-                  fmtDateTime(shift.expires_at)
-                )}</div>`
-              : ""
-          }
-          ${
-            Number(shift.extended_minutes || 0)
-              ? `<div class="text-xs font-extrabold text-slate-600 dark:text-slate-300"><b>Extendido:</b> +${escapeHtml(
-                  shift.extended_minutes
-                )} min</div>`
-              : ""
-          }
         </div>
       `;
     }
   }
 
-  let turn = { totals: { revenue: 0, qty: 0 } };
-  if (shift?.opened_at) {
-    turn = await fetchSalesForPVShift(
-      id,
-      shift.opened_at,
-      new Date().toISOString()
-    );
-  }
-  setText("pvTurnRevenue", `$ ${fmtMoney(turn.totals?.revenue ?? 0)}`);
-  setText("pvTurnQty", `${fmtNum(turn.totals?.qty ?? 0)} ítems`);
+  const s30d = await fetchSalesForPV(id, from30, today);
 
-  const [sToday, s7d, s30d] = await Promise.all([
-    fetchSalesForPV(id, today, today),
-    fetchSalesForPV(id, from7, today),
-    fetchSalesForPV(id, from30, today),
-  ]);
-
-  setText("pvTodayRevenue", `$ ${fmtMoney(sToday.totals?.revenue ?? 0)}`);
-  setText("pvTodayQty", `${fmtNum(sToday.totals?.qty ?? 0)} ítems`);
-
-  setText("pv7dRevenue", `$ ${fmtMoney(s7d.totals?.revenue ?? 0)}`);
-  setText("pv7dQty", `${fmtNum(s7d.totals?.qty ?? 0)} ítems`);
-
-  setText("pv30dRevenue", `$ ${fmtMoney(s30d.totals?.revenue ?? 0)}`);
-  setText("pv30dQty", `${fmtNum(s30d.totals?.qty ?? 0)} ítems`);
-
-  const tbody = q("pvTopTbody");
   const meta = q("pvTopMeta");
   if (meta) meta.textContent = `${from30} → ${today}`;
 
+  const tbody = q("pvTopTbody");
   if (tbody) {
     const items = Array.isArray(s30d.items) ? s30d.items.slice(0, 12) : [];
     if (items.length === 0) {
@@ -1350,7 +1224,7 @@ async function doCreatePV() {
   try {
     const values = await modalForm({
       title: "Crear local",
-      desc: "Completa los datos básicos. Luego puedes editar todo lo demás.",
+      desc: "Completa los datos básicos. Esto también registrará Departamento/Municipio en sus tablas si no existen.",
       icon: "add_business",
       tone: "info",
       confirmText: "Crear",
@@ -1371,7 +1245,6 @@ async function doCreatePV() {
           required: true,
           value: "",
           placeholder: "6.2442",
-          hint: "Formato número. Puedes usar punto o coma.",
         },
         {
           name: "Longitud",
@@ -1379,14 +1252,12 @@ async function doCreatePV() {
           required: true,
           value: "",
           placeholder: "-75.5812",
-          hint: "Formato número. Puedes usar punto o coma.",
         },
         {
           name: "num_whatsapp",
           label: "WhatsApp (opcional)",
           required: false,
           value: "",
-          placeholder: "573001234567",
         },
       ],
     });
@@ -1423,11 +1294,18 @@ async function doCreatePV() {
     });
     hideLoading();
 
+    // recarga meta desde tablas list + items
     await loadMeta();
     await loadAll();
     await loadActiveShifts();
 
     state.selectedPV = created.item?.id || null;
+
+    // cuando creas, resetea chip dep a "all" para no “esconderlo”
+    state.selectedDep = "all";
+    if (els.qDep) els.qDep.value = "all";
+    if (els.qMuni) els.qMuni.value = "all";
+
     renderAll();
 
     modalAlert({
@@ -1518,6 +1396,7 @@ async function saveSelected() {
     );
     clearDraft(pv.id);
 
+    // ✅ importante: refrescar meta desde tablas
     await loadMeta();
     await loadActiveShifts();
 
@@ -1605,6 +1484,181 @@ async function deleteSelected() {
   }
 }
 
+// ---------- Dashboard (lazy) ----------
+function openDash() {
+  els.dashModal?.classList?.remove("hidden");
+  document.body.style.overflow = "hidden";
+
+  if (els.dashMount && !els.dashMount.innerHTML.trim()) {
+    els.dashMount.innerHTML = `
+      <div class="text-sm text-slate-600 dark:text-slate-300">
+        Pulsa <b>Cargar</b> para traer la información.
+      </div>
+    `;
+  }
+
+  els.dashSub.textContent = state.dashboard.loaded
+    ? "Dashboard cargado. Puedes actualizar."
+    : "Pulsa “Cargar” para ver ventas y turnos.";
+  els.btnDashRefresh.disabled = !state.dashboard.loaded;
+}
+
+function closeDash() {
+  els.dashModal?.classList?.add("hidden");
+  document.body.style.overflow = "";
+}
+els.dashModal?.addEventListener("click", (e) => {
+  if (e.target.closest("[data-dash-close]")) closeDash();
+});
+
+function svgBarChart(values, { height = 70, pad = 6 } = {}) {
+  const w = 220;
+  const h = height;
+  const max = Math.max(...values, 1);
+  const n = values.length || 1;
+  const gap = 3;
+  const barW = Math.max(2, Math.floor((w - pad * 2 - gap * (n - 1)) / n));
+
+  let x = pad;
+  const bars = values
+    .map((v) => {
+      const bh = Math.max(1, Math.round((v / max) * (h - pad * 2)));
+      const y = h - pad - bh;
+      const rect = `<rect x="${x}" y="${y}" width="${barW}" height="${bh}" rx="2" ry="2" opacity="0.9"></rect>`;
+      x += barW + gap;
+      return rect;
+    })
+    .join("");
+
+  return `
+    <svg width="100%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="chart">
+      <rect x="0" y="0" width="${w}" height="${h}" rx="10" ry="10" opacity="0.06"></rect>
+      ${bars}
+    </svg>
+  `;
+}
+
+async function loadDashboardGlobal() {
+  // lazy: SOLO al abrir y pulsar cargar
+  const today = dateToYYYYMMDD(new Date());
+  const from7 = dateToYYYYMMDD(daysAgo(6));
+  const from30 = dateToYYYYMMDD(daysAgo(29));
+
+  els.dashRange.textContent = `${from30} → ${today}`;
+  els.dashMount.innerHTML = "";
+
+  showLoading("Cargando dashboard…");
+  try {
+    const [shifts, sum7, sum30] = await Promise.all([
+      apiJSON(API.activeShifts).catch(() => ({ ok: true, items: [] })),
+      apiJSON(API.salesSummary(from7, today)),
+      apiJSON(API.salesSummary(from30, today)),
+    ]);
+
+    // series diaria (7 y 30) = múltiples llamadas, pero solo bajo demanda
+    const days7 = [];
+    for (let i = 6; i >= 0; i--) days7.push(dateToYYYYMMDD(daysAgo(i)));
+    const series7 = await Promise.all(
+      days7.map((d) =>
+        apiJSON(API.salesSummary(d, d)).catch(() => ({
+          ok: true,
+          totals: { revenue: 0, qty: 0 },
+        }))
+      )
+    );
+
+    const days30 = [];
+    for (let i = 29; i >= 0; i--) days30.push(dateToYYYYMMDD(daysAgo(i)));
+    const series30 = await Promise.all(
+      days30.map((d) =>
+        apiJSON(API.salesSummary(d, d)).catch(() => ({
+          ok: true,
+          totals: { revenue: 0, qty: 0 },
+        }))
+      )
+    );
+
+    const rev7 = series7.map((x) => Number(x.totals?.revenue || 0));
+    const rev30 = series30.map((x) => Number(x.totals?.revenue || 0));
+
+    const activeCount = Array.isArray(shifts.items) ? shifts.items.length : 0;
+
+    els.dashMount.innerHTML = `
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="dash-card">
+          <div class="dash-label">Ventas 7D</div>
+          <div class="dash-value">$ ${escapeHtml(
+            fmtMoney(sum7.totals?.revenue ?? 0)
+          )}</div>
+          <div class="dash-sub">${escapeHtml(
+            fmtNum(sum7.totals?.qty ?? 0)
+          )} ítems</div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-label">Ventas 30D</div>
+          <div class="dash-value">$ ${escapeHtml(
+            fmtMoney(sum30.totals?.revenue ?? 0)
+          )}</div>
+          <div class="dash-sub">${escapeHtml(
+            fmtNum(sum30.totals?.qty ?? 0)
+          )} ítems</div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-label">Turnos activos</div>
+          <div class="dash-value">${escapeHtml(fmtNum(activeCount))}</div>
+          <div class="dash-sub">${
+            activeCount ? "En curso ahora" : "Ninguno activo"
+          }</div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-label">Locales</div>
+          <div class="dash-value">${escapeHtml(
+            fmtNum(state.items.length)
+          )}</div>
+          <div class="dash-sub">Total en sistema</div>
+        </div>
+      </div>
+
+      <div class="mt-4 grid gap-3 lg:grid-cols-2">
+        <div class="dash-card">
+          <div class="flex items-center justify-between gap-2">
+            <div class="dash-label">Ventas diarias (7D)</div>
+            <div class="text-[11px] font-black text-slate-500 dark:text-slate-400">${escapeHtml(
+              days7[0]
+            )} → ${escapeHtml(days7[6])}</div>
+          </div>
+          <div class="mt-2">${svgBarChart(rev7, { height: 80 })}</div>
+          <div class="dash-sub">Picos y caídas por día</div>
+        </div>
+
+        <div class="dash-card">
+          <div class="flex items-center justify-between gap-2">
+            <div class="dash-label">Ventas diarias (30D)</div>
+            <div class="text-[11px] font-black text-slate-500 dark:text-slate-400">${escapeHtml(
+              days30[0]
+            )} → ${escapeHtml(days30[29])}</div>
+          </div>
+          <div class="mt-2">${svgBarChart(rev30, { height: 80 })}</div>
+          <div class="dash-sub">Tendencia mensual</div>
+        </div>
+      </div>
+    `;
+
+    state.dashboard.loaded = true;
+    state.dashboard.lastPayload = { sum7, sum30, activeCount };
+    els.btnDashRefresh.disabled = false;
+    els.dashSub.textContent = "Dashboard cargado.";
+  } catch (e) {
+    modalErrorFriendly(e, "Dashboard global");
+    els.dashMount.innerHTML = `<div class="text-sm text-slate-600 dark:text-slate-300">No se pudo cargar el dashboard.</div>`;
+  } finally {
+    hideLoading();
+  }
+}
+
 // ---------- RENDER ALL ----------
 function renderAll() {
   renderDropdowns();
@@ -1630,6 +1684,9 @@ els.qSearch?.addEventListener("input", () => {
   saveFilters();
 });
 els.qDep?.addEventListener("change", () => {
+  // si el usuario usa dropdown, “resetea chips” a all y usa dropdown
+  state.selectedDep = "all";
+  if (els.qMuni) els.qMuni.value = "all";
   renderDropdowns();
   renderChips();
   renderList();
@@ -1641,9 +1698,14 @@ els.qMuni?.addEventListener("change", () => {
   saveFilters();
 });
 
-els.btnReset?.addEventListener("click", resetFilters);
+els.btnReset?.addEventListener("click", (e) => {
+  clickFX(e.currentTarget);
+  resetFilters();
+});
 
-els.btnReload?.addEventListener("click", async () => {
+els.btnReload?.addEventListener("click", async (e) => {
+  clickFX(e.currentTarget);
+
   if (state.dirtyIds.size > 0) {
     const ok = await modalConfirm({
       tone: "info",
@@ -1659,19 +1721,55 @@ els.btnReload?.addEventListener("click", async () => {
     setDirtyBadge();
   }
 
-  await loadMeta();
-  await loadAll();
-  await loadActiveShifts();
-  await loadGlobalDashboard();
-
-  renderAll();
+  showLoading("Recargando datos…");
+  try {
+    await loadMeta();
+    await loadAll();
+    await loadActiveShifts();
+    renderAll();
+  } finally {
+    hideLoading();
+  }
 });
 
-els.btnAddPV?.addEventListener("click", doCreatePV);
-els.btnSaveSelected?.addEventListener("click", saveSelected);
-els.btnDeleteSelected?.addEventListener("click", deleteSelected);
+els.btnAddPV?.addEventListener("click", (e) => {
+  clickFX(e.currentTarget);
+  doCreatePV();
+});
+els.btnSaveSelected?.addEventListener("click", (e) => {
+  clickFX(e.currentTarget);
+  saveSelected();
+});
+els.btnDeleteSelected?.addEventListener("click", (e) => {
+  clickFX(e.currentTarget);
+  deleteSelected();
+});
 
-// -------- Dep drag scroll (ya lo tienes en tu html/css) --------
+// Dashboard
+els.btnDashboard?.addEventListener("click", (e) => {
+  clickFX(e.currentTarget);
+  openDash();
+});
+els.btnDashClose?.addEventListener("click", (e) => {
+  clickFX(e.currentTarget);
+  closeDash();
+});
+els.btnDashLoad?.addEventListener("click", async (e) => {
+  clickFX(e.currentTarget);
+  await loadDashboardGlobal();
+});
+els.btnDashRefresh?.addEventListener("click", async (e) => {
+  clickFX(e.currentTarget);
+  await loadDashboardGlobal();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (!els.dashModal) return;
+  if (!els.dashModal.classList.contains("hidden") && e.key === "Escape")
+    closeDash();
+});
+
+// -------- Dep drag scroll --------
 function initDepScroller() {
   const wrap = els.depScrollWrap;
   if (!wrap) return;
@@ -1691,19 +1789,31 @@ function initDepScroller() {
     const amt = Math.max(220, Math.floor(wrap.clientWidth * 0.75));
     wrap.scrollBy({ left: dir * amt, behavior: "smooth" });
   };
-  btnL?.addEventListener("click", () => scrollByAmount(-1));
-  btnR?.addEventListener("click", () => scrollByAmount(1));
+  btnL?.addEventListener("click", (e) => {
+    clickFX(e.currentTarget);
+    scrollByAmount(-1);
+  });
+  btnR?.addEventListener("click", (e) => {
+    clickFX(e.currentTarget);
+    scrollByAmount(1);
+  });
 
   let isDown = false;
   let startX = 0;
   let startLeft = 0;
 
   const onDown = (e) => {
+    // ✅ Si el usuario está haciendo click en un chip, NO interceptar
+    if (e.target.closest("button.chip")) return;
+
     if (e.pointerType === "mouse" && e.button !== 0) return;
+
     isDown = true;
     wrap.classList.add("is-dragging");
     startX = e.clientX;
     startLeft = wrap.scrollLeft;
+
+    // ✅ solo capturar si es drag del contenedor (no sobre botones)
     wrap.setPointerCapture?.(e.pointerId);
   };
 
@@ -1722,7 +1832,8 @@ function initDepScroller() {
     updateArrows();
   };
 
-  wrap.addEventListener("pointerdown", onDown, { passive: true });
+  // ✅ IMPORTANT: pointerdown NO passive, para evitar comportamientos raros PC
+  wrap.addEventListener("pointerdown", onDown, { passive: false, capture: true });
   wrap.addEventListener("pointermove", onMove, { passive: false });
   wrap.addEventListener("pointerup", end);
   wrap.addEventListener("pointercancel", end);
@@ -1736,21 +1847,25 @@ function initDepScroller() {
 
 // ---------- INIT ----------
 (async function init() {
-  await loadMeta();
-  await loadAll();
+  showLoading("Cargando PV…");
+  try {
+    await loadMeta(); // ✅ ahora desde Departamentos_list / Municipio_list
+    await loadAll();
+    await loadActiveShifts();
 
-  await loadActiveShifts();
-  await loadGlobalDashboard();
+    loadFilters();
 
-  loadFilters();
-  renderAll();
-  initDepScroller();
+    // después de cargar filtros guardados, refresca dropdowns con munis correctos
+    renderDropdowns();
+    renderAll();
+    initDepScroller();
+  } finally {
+    hideLoading();
+  }
 
-  renderDropdowns();
-
+  // refresco ligero (solo turnos/lista). NO dashboard global
   setInterval(async () => {
     await loadActiveShifts();
-    await loadGlobalDashboard();
     renderList();
     if (state.selectedPV) renderEditor();
   }, 60000);
