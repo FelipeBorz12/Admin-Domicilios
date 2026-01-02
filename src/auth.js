@@ -2,12 +2,16 @@
 
 const express = require('express');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const supabase = require('./supabase');
 
 const authRouter = express.Router();
 
 const COOKIE_NAME = process.env.ADMIN_SESSION_COOKIE || 'admin_session';
 const SESSION_DAYS = Number(process.env.ADMIN_SESSION_DAYS || 7);
+
+// Cost recomendado para bcrypt (10–12). 12 es buen balance para internos.
+const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS || 12);
 
 function parseCookies(cookieHeader) {
   const out = {};
@@ -29,7 +33,9 @@ function setSessionCookie(res, token) {
   const secure = String(process.env.COOKIE_SECURE || 'false').toLowerCase() === 'true';
   const maxAgeMs = SESSION_DAYS * 24 * 60 * 60 * 1000;
 
-  let cookie = `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(maxAgeMs / 1000)}`;
+  let cookie = `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(
+    maxAgeMs / 1000
+  )}`;
   if (secure) cookie += '; Secure';
 
   res.setHeader('Set-Cookie', cookie);
@@ -40,6 +46,11 @@ function clearSessionCookie(res) {
   let cookie = `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
   if (secure) cookie += '; Secure';
   res.setHeader('Set-Cookie', cookie);
+}
+
+function looksLikeBcrypt(hash) {
+  // bcrypt normalmente empieza con $2a$, $2b$, $2y$
+  return typeof hash === 'string' && /^\$2[aby]\$/.test(hash);
 }
 
 async function getAdminFromRequest(req) {
@@ -95,9 +106,29 @@ authRouter.post('/login', async (req, res) => {
       return res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
     }
 
-    // ⚠️ TEMPORAL: comparación directa (texto plano)
-    // Aquí password_hash realmente contiene la contraseña en texto plano.
-    if (password !== admin.password_hash) {
+    const stored = admin.password_hash || '';
+    let ok = false;
+
+    if (looksLikeBcrypt(stored)) {
+      // ✅ Modo seguro: bcrypt
+      ok = await bcrypt.compare(password, stored);
+    } else {
+      // ⚠️ Legacy (texto plano) → solo para migración.
+      // Si coincide, hacemos upgrade a bcrypt para que no vuelva a quedar plano.
+      ok = password === stored;
+
+      if (ok) {
+        try {
+          const newHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+          await supabase.from('admin_users').update({ password_hash: newHash }).eq('id', admin.id);
+        } catch {
+          // Si falla el upgrade, igual permitimos login (ya validó),
+          // pero te recomiendo revisar logs/DB luego.
+        }
+      }
+    }
+
+    if (!ok) {
       return res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
     }
 
